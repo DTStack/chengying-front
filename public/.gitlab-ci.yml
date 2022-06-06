@@ -1,0 +1,60 @@
+# Read more: https://docs.gitlab.com/12.7/ee/ci/yaml/README.html
+cache:
+  paths:
+    - .yarn
+    - node_modules/
+
+# 当 merge_requests, master, dev, test 分支时会执行依赖安装
+before_script:
+  - yarn install --cache-folder .yarn
+
+stages:
+  - lint
+  - check-types
+  - test
+  - build_deploy
+  - code_analysis
+
+# 当 merge_requests 执行 eslint 检查
+code_quality:
+  stage: lint
+  script:
+    - yarn lint
+  only:
+    - merge_requests
+
+# 当 merge_requests 执行 tsc 类型检查
+check_types:
+  stage: check-types
+  script:
+    - yarn check-types
+  only:
+    - merge_requests
+
+# 当 merge_requests 有更时会执行单元测试任务
+test:
+  stage: test
+  script:
+    - yarn test
+  cache:
+    paths:
+      - coverage/
+  only:
+    - merge_requests
+    - /dev/
+
+# 开发环境更新部署
+build_deploy: # deploy dev environment
+  stage: build_deploy
+  script:
+    - yarn deploy-dev
+  only:
+    - /dev/
+
+# 代码分析
+code_analysis:
+  stage: code_analysis
+  script:
+    - yarn sonar
+  only:
+    - /dev/

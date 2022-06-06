@@ -1,0 +1,17 @@
+node_modules/
+bower_components/
+src/app/.idea/
+.DS_Store
+.idea/
+.vscode
+.history
+npm-error.log
+yarn-error.log
+dist/
+builds/
+cache/
+.scannerwork/
+dt-alert/
+coverage/
+typescript
+stats.json
