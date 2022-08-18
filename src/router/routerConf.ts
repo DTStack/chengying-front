@@ -64,18 +64,22 @@ const AddAlertChannelPanel = asyncComponent(
   import('@/pages/alertChannel/addAlertChannel/addAlertChannel'),
   'AddAlertChannelPanel'
 );
-
+/* ------ 部署向导 ------ */
+const InstallGuideIndex = asyncComponent(
+  import('@/pages/installGuide/installguide'),
+  'InstallGuideIndex'
+);
 const Steps = asyncComponent(import('@/pages/installGuide/steps'), 'Steps');
 
 /* ------ 系统配置 ------ */
+const BackupConfig = asyncComponent(
+  import('@/pages/systemConfig/backupConfig'),
+  'BackupConfig'
+);
+
 const Security = asyncComponent(
   import('@/pages/systemConfig/security'),
   'Security'
-);
-
-const GlobalConfig = asyncComponent(
-  import('@/pages/systemConfig/globalConfig'),
-  'GlobalConfig'
 );
 
 /* ------ 脚本回显 ------ */
@@ -108,17 +112,9 @@ const SecurityAudit = asyncComponent(
 );
 
 /* ---------- 脚本管理 ---------- */
-const BackupConfig = asyncComponent(
-  import('@/pages/platformManager/backupConfig'),
-  'BackupConfig'
-);
 const ScriptManager = asyncComponent(
   import('@/pages/platformManager/scriptManager'),
   'ScriptManager'
-);
-const ClusterInspection = asyncComponent(
-  import('@/pages/platformManager/clusterInspection'),
-  'ClusterInspection'
 );
 
 
@@ -226,9 +222,7 @@ export const RouterConf: RouterConfItemType[] = [
       {
         path: '/platform',
         children: [
-          { path: '/backup', component: BackupConfig },
           { path: '/scriptManager', component: ScriptManager },
-          { path: '/clusterInspection', component: ClusterInspection },
         ]
       },
       {
@@ -262,11 +256,16 @@ export const RouterConf: RouterConfItemType[] = [
           { path: '/echoDetail', component: CommandEchoDetail },
         ],
       },
+      /* ------ 部署向导 ------ */
+      {
+        path: '/installguide',
+        component: InstallGuideIndex,
+      },
       {
         path: '/systemconfig',
         children: [
+          { path: '/backup', component: BackupConfig },
           { path: '/security', component: Security },
-          { path: '/globalConfig', component: GlobalConfig },
         ],
       },
       /* ------ 用户中心 ------ */

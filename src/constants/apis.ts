@@ -74,10 +74,6 @@ export default {
       url: '/api/v2/product',
       method: 'get',
     },
-    getProductName: {
-      url: '/api/v2/product/product_name_list',
-      method: 'get',
-    },
     // 获取更新目录
     getPatchPath: {
       url: '/api/v2/product/patchpath',
@@ -90,6 +86,27 @@ export default {
     updatePatchStatus: {
       url: '/api/v2/product/patchupdate',
       method: 'post',
+    },
+    getRollbackDbStatus: (params: any) => {
+      const { product_name } = params;
+      return {
+        url: `/api/v2/product/${product_name}/getRollbackDbStatus`,
+        method: 'get',
+      };
+    },
+    getNewBackupCpList: (params: any) => {
+      const { deploy_uuid } = params;
+      return {
+        url: `/api/v2/instance/${deploy_uuid}/list`,
+        method: 'get',
+      };
+    },
+    getNewBackupDbStatus: (params: any) => {
+      const { product_name } = params;
+      return {
+        url: `/api/v2/product/${product_name}/getNewBackupDbStatus`,
+        method: 'get',
+      };
     },
     getCurrentProduct: (params: any) => {
       const { product_name } = params;
@@ -732,13 +749,6 @@ export default {
       url: '/api/v2/cluster/hosts/auto_svcgroup',
       method: 'post',
     },
-    checkMySqlAddr: (params: any) => {
-      const { product_name } = params;
-      return {
-        url: `/api/v2/product/${product_name}/checkMysqlAddr`,
-        method: 'post',
-      };
-    },
     getGlobalAutoConfig: (params: any) => {
       const { productName, productVersion, carbon_thriftserver } = params;
       return {
@@ -761,10 +771,6 @@ export default {
       url: '/api/v2/product/productList?sort-by=create_time&sort-dir=desc',
       method: 'get',
     },
-    getProductStepOneList: {
-      url: '/api/v2/product_line/product_list',
-      method: 'get',
-    },
     getProductPackageServices: (params: any) => {
       const { productName, productVersion } = params;
       return {
@@ -780,9 +786,9 @@ export default {
       };
     },
     serviceUpdate: (params: any) => {
-      const { ProductName } = params;
+      const { ProductName, ProductVersion } = params;
       return {
-        url: `/api/v2/product/${ProductName}/serviceUpdate`,
+        url: `/api/v2/product/${ProductName}/version/${ProductVersion}/serviceUpdate`,
         method: 'post',
       };
     },
@@ -1034,6 +1040,15 @@ export default {
       const { productName } = params;
       return {
         url: `/api/v2/product/${productName}/rollback`,
+        method: 'post',
+      };
+    },
+
+    // 回滚前的校验
+    handleRollBackCheck: (params: SearchDeployLogs) => {
+      const { productName } = params;
+      return {
+        url: `/api/v2/product/${productName}/rollback_check`,
         method: 'post',
       };
     },
@@ -1615,45 +1630,6 @@ export default {
       const { id } = params;
       return {
         url: `/api/v2/task/${id}`,
-        method: 'dele',
-      };
-    },
-    editScript: (params) => {
-      const { id } = params;
-      return {
-        url: `/api/v2/task/${id}/edit`,
-        method: 'post',
-      };
-    },
-  },
-  // 全局配置
-  globalConfig: {
-    // 查询全局配置
-    getGlobalConfig: {
-      url: '/api/v2/user/sys_config/globalConfig',
-      method: 'get',
-    },
-    // 修改全局配置
-    setGlobalConfig: {
-      url: '/api/v2/user/sys_config/globalConfig',
-      method: 'post',
-    },
-  },
-  // 产品线相关接口
-  productLine: {
-    // 获取所有产品线信息接口
-    getProductLine: {
-      url: '/api/v2/product_line',
-      method: 'get',
-    },
-    uploadProductLine: {
-      url: '/api/v2/product_line/upload',
-      method: 'post',
-    },
-    deleteProductLine: (params) => {
-      const { id } = params;
-      return {
-        url: `/api/v2/product_line/${id}`,
         method: 'dele',
       };
     },

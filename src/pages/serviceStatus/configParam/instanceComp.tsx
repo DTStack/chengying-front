@@ -99,7 +99,7 @@ class InstanceConfigComp extends React.Component<Prop, State> {
     const { sname, pname } = this.props;
     params.name = name;
     this.setState({
-      currentOperateSwitch: name,
+      currentOperateSwitch: params,
     });
     servicePageService
       .getSwitchRecord({
@@ -131,9 +131,9 @@ class InstanceConfigComp extends React.Component<Prop, State> {
     const { IsOn } = params;
     const _this = this;
     confirm({
-      title: `确定${IsOn ? '关闭' : '开启'}Nginx吗？`,
+      title: `确定${IsOn ? '关闭' : '开启'}Kerberos吗？`,
       icon: <Icon type="exclamation-circle" theme="filled" />,
-      content: `Nginx${IsOn ? '关闭' : '开启'}后，默认重启服务，确定${
+      content: `Kerberos${IsOn ? '关闭' : '开启'}后，默认重启服务，确定${
         IsOn ? '关闭' : '开启'
       }吗？`,
       onOk() {
@@ -226,6 +226,7 @@ class InstanceConfigComp extends React.Component<Prop, State> {
       // 如果是数组则不显示title
       if (typeof data[keyName] === 'object') {
         if (keyName == 'Switch') {
+          console.log(data[keyName], 'data[keyName]----');
           for (const key in data[keyName]) {
             return (
               <FormItem label={key} {...formItemLayout}>
@@ -233,22 +234,22 @@ class InstanceConfigComp extends React.Component<Prop, State> {
                   key={keyName + '-' + key}
                   style={{ display: 'inline-block' }}>
                   <Switch
-                    checked={data[keyName].Nginx.IsOn}
+                    checked={data[keyName][key].IsOn}
                     onClick={ctx.handleSwitch.bind(
                       ctx,
-                      data[keyName].Nginx,
-                      'Nginx'
+                      data[keyName][key],
+                      key
                     )}></Switch>
                 </FormItem>
-                {data[keyName].Nginx.IsOn && (
+                {data[keyName][key].IsOn && (
                   <a
                     style={{ marginLeft: '5px' }}
                     onClick={ctx.handleSwitchExtension.bind(
                       ctx,
-                      data[keyName].Nginx.Extention
+                      data[keyName][key].Extention
                     )}>
-                    {SWITCH_TYPE[data[keyName].Nginx.Extention?.Type]}{' '}
-                    {data[keyName].Nginx.Extention?.Value}
+                    {SWITCH_TYPE[data[keyName][key].Extention.Type]}{' '}
+                    {data[keyName][key].Extention.Value}
                   </a>
                 )}
               </FormItem>
@@ -528,9 +529,9 @@ class InstanceConfigComp extends React.Component<Prop, State> {
             <p style={{ lineHeight: '20px' }}>无</p>
           )}
           <Modal
-            title={`${
-              statusDetail.switch_type === 'off' ? '关闭' : '开启'
-            }Nginx`}
+            title={`${statusDetail.switch_type === 'off' ? '关闭' : '开启'}${
+              currentOperateSwitch.name
+            }`}
             visible={statusVisible}
             onOk={() => this.setState({ statusVisible: false })}
             onCancel={() => this.setState({ statusVisible: false })}
@@ -611,7 +612,7 @@ class InstanceConfigComp extends React.Component<Prop, State> {
                     lineHeight: '28px',
                     fontSize: '20px',
                   }}>
-                  Nginx{statusDetail.switch_type === 'off' ? '关闭' : '开启'}
+                  Kerberos{statusDetail.switch_type === 'off' ? '关闭' : '开启'}
                   成功
                 </div>
               </div>

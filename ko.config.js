@@ -113,6 +113,7 @@ module.exports = {
     proxy: [
       {
         path: '/api/v2/cluster/showShellLog',
+        // target: 'ws://172.16.8.200', // v4.3.2 environment of test
         target: 'ws://172.16.82.176',
         ws: true,
       },
@@ -122,6 +123,7 @@ module.exports = {
           '/gate/**',
         ],
         // target: 'http://172.16.10.191', // 测试环境
+        // target: 'http://172.16.8.200', // v4.3.2 environment of test
         target: 'http://172.16.82.176', // 开发环境          
       }
     ]

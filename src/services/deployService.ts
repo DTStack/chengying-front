@@ -103,6 +103,13 @@ export default {
     );
   },
 
+  // 回滚前的校验
+  handleRollBackCheck(urlParams: any, params: any) {
+    return http[deployAPI.handleRollBackCheck(urlParams).method](
+      deployAPI.handleRollBackCheck(urlParams).url,
+      params
+    );
+  },
 
   // 备份
   handleRollBack(urlParams: any, params: any) {

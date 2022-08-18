@@ -69,7 +69,7 @@ class R extends React.Component<Props, any> {
             className="param-input-textarea"
             // rows={1}
             value={defaultvalue}
-            onBlur={(e) => this.props.onBlur(e)}
+            // onBlur={(e) => this.props.onBlur(e)}
             onChange={(e) => this.props.onChange(e)}
             disabled={inputDisabled}
             style={{ height: 32 }}

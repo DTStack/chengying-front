@@ -3,6 +3,7 @@ import {
   Card,
   Input,
   Button,
+  Upload,
   Icon,
   message,
   Tooltip,
@@ -14,12 +15,12 @@ import {
 } from 'antd';
 import { RESULT_STATUS, RESULT_FILTER } from '../const';
 import { AppStoreTypes } from '@/stores';
+import axios from 'axios';
 import { connect } from 'react-redux';
 
 import SettingModal from './settingModal';
 import PreviewScript from './previewScript';
 import TaskHistory from './taskHistory';
-import UploadScript from './uploadScript';
 import { scriptManager } from '@/services';
 import { EllipsisText } from 'dt-react-component';
 
@@ -27,6 +28,7 @@ import './style.scss';
 
 const { Search } = Input;
 const { confirm } = Modal;
+const innerAxios = {};
 interface IProps {
   authorityList: any;
 }
@@ -85,9 +87,6 @@ interface IState {
   execStatus: any;
   times: number;
   limit: number;
-  showUploadScript: boolean;
-  uploadTitle: string;
-  detailInfo: any;
 }
 @(connect(mapStateToProps) as any)
 export default class ScriptManager extends React.PureComponent<IProps, IState> {
@@ -110,9 +109,6 @@ export default class ScriptManager extends React.PureComponent<IProps, IState> {
     execStatus: '',
     times: 0,
     limit: 10,
-    showUploadScript: false,
-    uploadTitle: '上传脚本',
-    detailInfo: null,
   };
 
   componentDidMount() {
@@ -164,12 +160,19 @@ export default class ScriptManager extends React.PureComponent<IProps, IState> {
     });
   };
 
-  handleUploadFile = (isEdit?: boolean) => {
+  handleUploadFile = (file, isEdit?: boolean) => {
     if (!isEdit) {
       message.error('权限不足，请联系管理员！');
       return;
     }
-    this.setState({ showUploadScript: true });
+    if (file) {
+      const isAccept =
+        file.type === 'text/x-sh' || file.type === 'text/x-python-script';
+      if (!isAccept) {
+        message.error('仅支持 .py，.sh 格式文件!');
+        return;
+      }
+    }
   };
 
   // 按脚本名称搜索
@@ -187,12 +190,18 @@ export default class ScriptManager extends React.PureComponent<IProps, IState> {
   };
 
   // 点击脚本名称
-  clickName = (record) => {
-    this.setState({
-      taskId: record.id,
-      previewVisible: true,
-      scriptName: record.name,
-    });
+  clickName = async (record) => {
+    const res = await scriptManager.getTaskContent({ id: record.id });
+    const { data = {} } = res;
+    if (data.code === 0) {
+      this.setState({
+        previewContent: data.data.result,
+        previewVisible: true,
+        scriptName: record.name,
+      });
+    } else {
+      message.error(data.msg);
+    }
   };
 
   // 点击执行历史
@@ -235,7 +244,6 @@ export default class ScriptManager extends React.PureComponent<IProps, IState> {
         title: '脚本描述',
         dataIndex: 'describe',
         key: 'describe',
-        width: 200,
         render: (text: string) => {
           return (
             <div>
@@ -293,6 +301,72 @@ export default class ScriptManager extends React.PureComponent<IProps, IState> {
         render: this.renderOperator,
       },
     ];
+  };
+
+  // 上传脚本
+  customRequest = (options) => {
+    const {
+      action,
+      file,
+      filename,
+      headers,
+      onError,
+      onProgress,
+      onSuccess,
+      withCredentials,
+    } = options;
+    const formData = new FormData();
+    formData.append(filename, file);
+    var CancelToken = axios.CancelToken;
+    var source = CancelToken.source();
+
+    axios
+      .post(action, formData, {
+        withCredentials,
+        headers,
+        onUploadProgress: ({ total, loaded }) => {
+          onProgress({
+            percent: Math.round((loaded / total) * 100).toFixed(2),
+            name: file.name,
+            uid: file.uid,
+          });
+        },
+        cancelToken: source.token,
+      })
+      .then(({ data }): any => {
+        if (data?.code !== 0) {
+          return message.error(data.msg);
+        }
+        onSuccess(data, file);
+        this.getScriptList();
+      })
+      .catch((onError) => {});
+    innerAxios[file.uid] = {
+      abort() {
+        source.cancel();
+      },
+    };
+  };
+
+  // 选择文件改变
+  handleChange = ({ event, file, fileList }) => {
+    // 此处拦截error状态，erorr是event为空， 因为upload的success、error都会再次调用onchange事件，
+    if (!event) return;
+    // 清除error数据
+    fileList = fileList.filter((item) => item.status != 'error');
+    // 删除移除的
+    if (file && file.status === 'removed') {
+      fileList = fileList.filter((item) => item.status != 'removed');
+      if (file.status === 'removed') {
+        innerAxios[file.uid].abort();
+      }
+    }
+    // 删除成功的
+    if (file && file.percent === '100.00') {
+      // status状态有问题，因此使用percent
+      fileList = fileList.filter((item) => item.percent != '100.00');
+    }
+    fileList = fileList.filter((item) => item.status !== 'done');
   };
 
   // 表格选择
@@ -422,32 +496,6 @@ export default class ScriptManager extends React.PureComponent<IProps, IState> {
     });
   };
 
-  // 关闭上传脚本弹框
-  closeUpload = () => {
-    this.setState({
-      showUploadScript: false,
-      detailInfo: null,
-      uploadTitle: '上传脚本',
-    });
-  };
-
-  // 上传脚本后成功回调
-  callUpload = () => {
-    this.closeUpload();
-    this.getScriptList();
-  };
-
-  // 编辑脚本
-  showUploadModal = (info, id) => {
-    this.setState({ detailInfo: info, previewVisible: false }, () => {
-      this.setState({
-        uploadTitle: '编辑',
-        showUploadScript: true,
-        taskId: id,
-      });
-    });
-  };
-
   // 表格操作按钮
   renderOperator = (text: any, record: any) => {
     const { authorityList } = this.props;
@@ -521,10 +569,18 @@ export default class ScriptManager extends React.PureComponent<IProps, IState> {
       taskId,
       isTimeSetting,
       start,
-      showUploadScript,
-      uploadTitle,
-      detailInfo,
     } = this.state;
+    const uploadFileProps: any = {
+      name: 'file',
+      action: '/api/v2/task/upload',
+      openFileDialogOnClick: isEdit,
+      beforeUpload: (file: any) => {
+        this.handleUploadFile(file, true);
+      },
+      onChange: this.handleChange,
+      customRequest: (options) => this.customRequest(options),
+      fileList: [],
+    };
 
     const rowSelection = {
       selectedRowKeys,
@@ -535,17 +591,6 @@ export default class ScriptManager extends React.PureComponent<IProps, IState> {
 
     return (
       <div className="scriptManager">
-        {/* 上传脚本弹框 */}
-        {showUploadScript && (
-          <UploadScript
-            id={taskId}
-            onClose={this.closeUpload}
-            onOk={this.callUpload}
-            title={uploadTitle}
-            showVisible={showUploadScript}
-            detailInfo={detailInfo}
-          />
-        )}
         {/* 定时/手动操作弹框 */}
         {visible && (
           <SettingModal
@@ -560,16 +605,12 @@ export default class ScriptManager extends React.PureComponent<IProps, IState> {
           />
         )}
         {/* 查看脚本 */}
-        {previewVisible && (
-          <PreviewScript
-            showUploadModal={this.showUploadModal}
-            id={taskId}
-            title={`脚本查看/${scriptName}`}
-            visible={previewVisible}
-            content={previewContent}
-            close={this.closePreviewScript}
-          />
-        )}
+        <PreviewScript
+          title={`脚本查看/${scriptName}`}
+          visible={previewVisible}
+          content={previewContent}
+          close={this.closePreviewScript}
+        />
         {/* 执行历史 */}
         {visibleHistory && (
           <TaskHistory
@@ -594,11 +635,13 @@ export default class ScriptManager extends React.PureComponent<IProps, IState> {
               </div>
               <div className="scriptManage-uploadBox">
                 {isView && (
-                  <Button
-                    type="primary"
-                    onClick={() => this.handleUploadFile(isEdit)}>
-                    上传脚本
-                  </Button>
+                  <Upload {...uploadFileProps}>
+                    <Button
+                      type="primary"
+                      onClick={() => this.handleUploadFile('', isEdit)}>
+                      上传脚本
+                    </Button>
+                  </Upload>
                 )}
                 <Tooltip placement="topRight" title="仅支持 .py，.sh 格式文件">
                   <div style={{ width: 35, paddingLeft: '7px', marginTop: 8 }}>
@@ -615,8 +658,7 @@ export default class ScriptManager extends React.PureComponent<IProps, IState> {
             </div>
             <div className="tabList">
               <Table
-                scroll={{ y: 'calc(100vh - 274px)' }}
-                style={{ height: 'calc(100vh - 230px)' }}
+                style={{ height: 'calc(100vh - 230px)', overflow: 'auto' }}
                 loading={tableLoading}
                 rowSelection={rowSelection}
                 columns={this.initColumns()}

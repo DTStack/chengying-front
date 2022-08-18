@@ -34,6 +34,7 @@ interface IProps extends ServiceProp {
   getServiceGroup: () => void; // 获取服务信息
   products: any; // 滚动重启
   setCurrentService: Function;
+  setCurrentSelectedIp: (ip: string) => void;
 }
 interface IState {
   rangeDate: any;
@@ -144,6 +145,7 @@ export default class RuntimeStatus extends React.PureComponent<IProps, IState> {
     this.setState({
       currentHostDetail: record,
     });
+    this.props.setCurrentSelectedIp(record?.ip);
   };
 
   // ip地址的render
@@ -160,7 +162,8 @@ export default class RuntimeStatus extends React.PureComponent<IProps, IState> {
           title={JSON.parse(record.schema).Instance.HomePage.replace(
             'link_ip',
             text
-          )}>
+          )}
+        >
           {text}
         </a>
       ) : (
@@ -186,12 +189,14 @@ export default class RuntimeStatus extends React.PureComponent<IProps, IState> {
               display: Instance.ConfigPaths ? 'inline' : 'none',
               paddingRight: '5px',
             }}
-            onClick={() => this.handleOpenHostConfig(record)}>
+            onClick={() => this.handleOpenHostConfig(record)}
+          >
             配置
           </a>
           <a
             style={{ display: Instance.Logs ? 'inline' : 'none' }}
-            onClick={() => this.handleToLog(record)}>
+            onClick={() => this.handleToLog(record)}
+          >
             日志
           </a>
         </span>
@@ -241,7 +246,8 @@ export default class RuntimeStatus extends React.PureComponent<IProps, IState> {
             return (
               <a
                 style={style}
-                onClick={() => this.handleOpenHostConfig(record)}>
+                onClick={() => this.handleOpenHostConfig(record)}
+              >
                 配置
               </a>
             );
@@ -623,21 +629,25 @@ export default class RuntimeStatus extends React.PureComponent<IProps, IState> {
         <div className="card-wrapper has-card-extra max-content__scroll">
           <div className="mb-12 clearfix">
             <p className="text-title-bold fl-l">运行主机</p>
-            {NORMAL_NO_CLOUD && !isKubernetes && Cookie.get('em_current_cluster_id') && (
-              <Button
-                className="fl-r"
-                type="primary"
-                disabled={isRestart}
-                loading={isRestart}
-                onClick={this.handleRestartServiceInTurn}>
-                滚动重启
-              </Button>
-            )}
+            {NORMAL_NO_CLOUD &&
+              !isKubernetes &&
+              Cookie.get('em_current_cluster_id') && (
+                <Button
+                  className="fl-r"
+                  type="primary"
+                  disabled={isRestart}
+                  loading={isRestart}
+                  onClick={this.handleRestartServiceInTurn}
+                >
+                  滚动重启
+                </Button>
+              )}
             {CAN_REPLICA && (
               <Button
                 className="fl-r"
                 type="primary"
-                onClick={this.handleExOrCap}>
+                onClick={this.handleExOrCap}
+              >
                 服务扩缩容
               </Button>
             )}
@@ -678,7 +688,8 @@ export default class RuntimeStatus extends React.PureComponent<IProps, IState> {
                 bordered={false}
                 tabList={tabList}
                 activeTabKey={this.state.key}
-                onTabChange={this.onTabChange}>
+                onTabChange={this.onTabChange}
+              >
                 {contentList[this.state.key]}
               </Card>
             </>

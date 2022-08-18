@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { AutoComplete, Transfer } from 'antd';
+import { Transfer } from 'antd';
 import { installGuideService, Service } from '@/services';
 import './style.scss';
 interface IProps {
@@ -125,7 +125,7 @@ const HostSelect: React.FC<IProps> = (props) => {
             showSearch
             listStyle={{
               width: 250,
-              height: 300
+              height: 300,
             }}
             titles={['未选', '已选']}
             targetKeys={targetKeys}

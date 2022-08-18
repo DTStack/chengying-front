@@ -17,7 +17,7 @@ import {
   List,
 } from 'antd';
 import { uniqBy } from 'lodash';
-import { Service, servicePageService } from '@/services';
+import { Service } from '@/services';
 import ComponentList from './componentList';
 import '../style.scss';
 import { connect } from 'react-redux';
@@ -192,41 +192,36 @@ class ComponentContainer extends React.Component<Props, State> {
 
   getProductComponents = (params?: any) => {
     const reqParams = Object.assign({}, this.state.searchParam, params);
-    servicePageService
-      .getProductName({
-        clusterId: 0,
-        parentProductName: params.parentProductName,
-      })
-      .then((res: any) => {
-        res = res.data;
-        if (res.code === 0) {
-          const data = res.data.list;
-          let arr = [];
-          arr = uniqBy(data, 'product_name');
-          this.setState(
-            {
-              componentList: arr,
-              searchParam: reqParams,
-            },
-            () => {
-              this.getDataList();
-            }
-          );
-        } else {
-          message.error(res.msg);
-        }
-      });
+    reqParams.limit = 0;
+    Service.getAllProducts(reqParams).then((res: any) => {
+      res = res.data;
+      if (res.code === 0) {
+        const data = res.data.list;
+        let arr = [];
+        arr = uniqBy(data, 'product_name');
+        this.setState(
+          {
+            componentList: arr,
+            searchParam: reqParams,
+          },
+          () => {
+            this.getDataList();
+          }
+        );
+      } else {
+        message.error(res.msg);
+      }
+    });
   };
 
   handleSelectChange = (value: string) => {
-    debugger;
     const newState = Object.assign({}, this.state.searchParam, {
       parentProductName: value,
       productName: undefined,
       productVersion: undefined,
     });
     this.setState({ searchParam: newState }, () => {
-      this.getProductComponents(newState);
+      this.getProductComponents();
     });
   };
 
@@ -687,7 +682,7 @@ class ComponentContainer extends React.Component<Props, State> {
                     <Option
                       data-testid={`option-${o.product_name_display}`}
                       key={o.product_name}>
-                      {o.product_name}
+                      {o.product_name_display}
                     </Option>
                   ))}
               </Select>

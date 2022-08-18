@@ -5,11 +5,9 @@ import cloneDeep from 'lodash/cloneDeep';
 const { product, service, alert } = apis;
 
 export interface ProductionListParams {
-  limit?: number;
+  limit: number;
   parentProductName?: string;
   namespace?: string;
-  clusterId?: number;
-  mode?: number;
 }
 
 export interface CurrentProductionParams {
@@ -198,13 +196,6 @@ export default {
   getProductList(params: ProductionListParams) {
     return http[product.getProductList.method](
       product.getProductList.url,
-      params
-    );
-  },
-
-  getProductName(params: ProductionListParams) {
-    return http[product.getProductName.method](
-      product.getProductName.url,
       params
     );
   },

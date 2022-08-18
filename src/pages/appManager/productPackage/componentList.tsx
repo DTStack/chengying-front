@@ -166,9 +166,6 @@ class ProductPackage extends React.Component<Props, State> {
       message.error('权限不足，请联系管理员！');
       return;
     }
-    this.props.unDeployActions.saveForcedUpgrade([])
-    this.props.unDeployActions.getIsFirstSmooth(false)
-    this.props.unDeployActions.getUpgradeType('')
     const url =
       '/deploycenter/appmanage/installs?type=' +
       (record.product_type === 0 ? 'hosts' : 'kubernetes') +

@@ -48,11 +48,11 @@
 }
 .ace-code-portal {
     width: 458px;
-    max-height: calc(100vh - 300px);
+    max-height: 647px;
     margin: 0 auto;
     background-color: transparent;
+    border: 1px solid none;
     border-radius: 2px;
-    border: 1px solid #DDDDDD;
     .ace-kuroir .ace_print-margin {
       width: 0;
     }
@@ -72,19 +72,5 @@
     // 只读
     .ace_scroller {
         cursor: not-allowed;
-    }
-    .ace_content{
-      padding: 10px;
-    }
-  }
-  .desBox{
-    display: flex;
-    margin-bottom: 20px;
-    .desBox-title{
-      flex: 0 0 60px;
-    }
-    .desBox-content{
-      flex: 1;
-      word-break: break-all;
     }
   }

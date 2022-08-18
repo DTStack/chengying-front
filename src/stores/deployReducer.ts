@@ -4,9 +4,6 @@ import { ActionType, DeployStore } from './modals';
 export type DeployStoreType = DeployStore;
 
 const initialState: DeployStore = {
-  upgradeType: sessionStorage.getItem('upgradeType') ??  '',
-  isFirstSmooth: sessionStorage.getItem('isFirstSmooth') ? JSON.parse(sessionStorage.getItem('isFirstSmooth')) : false,
-  forcedUpgrade: sessionStorage.getItem('forcedUpgrade') ? JSON.parse(sessionStorage.getItem('forcedUpgrade')) : [],
   versionList: [],
   product_name: '',
   product_version: '',
@@ -99,18 +96,6 @@ export default (state = initialState, action: ActionType) => {
       return newState;
     case deployActionTypes.SWITH_USE_CLOUD: // debugger;
       newState.product.Service = payload;
-      return newState;
-    case deployActionTypes.SAVE_FORCED_UPGRADE:
-      sessionStorage.setItem('forcedUpgrade', JSON.stringify(payload));
-      newState.forcedUpgrade = payload;
-      return newState;
-    case deployActionTypes.UPGRADE_TYPE:
-      sessionStorage.setItem('upgradeType', payload);
-      newState.upgradeType = payload;
-      return newState;
-    case deployActionTypes.GET_FIRST_SMOOTH:
-      sessionStorage.setItem('isFirstSmooth', JSON.stringify(payload));
-      newState.isFirstSmooth = payload;
       return newState;
     default:
       return state;

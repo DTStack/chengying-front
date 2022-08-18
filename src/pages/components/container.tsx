@@ -2,7 +2,7 @@ import * as React from 'react';
 import { connect } from 'react-redux';
 import { Select, message, Input, Icon, Button } from 'antd';
 import { uniqBy, uniq } from 'lodash';
-import { Service, servicePageService } from '@/services';
+import { Service } from '@/services';
 import { AppStoreTypes } from '@/stores';
 import ComponentList from './componentList';
 import DeployHistory from './deployHistory';
@@ -191,8 +191,9 @@ class ComponentContainer extends React.Component<Props, State> {
   // 获取已部署产品组件列表
   getProductComponents = (params?: any) => {
     const reqParams = Object.assign({}, this.state.searchParam, params);
+    reqParams.limit = 0;
     reqParams.mode = this.currentCluster.mode;
-    servicePageService.getProductName({clusterId: params?.clusterId, mode: 0, parentProductName: params?.parentProductName}).then((res: any) => {
+    Service.getAllProducts(reqParams).then((res: any) => {
       res = res.data;
       if (res.code === 0) {
         const data = res.data.list;
@@ -332,7 +333,6 @@ class ComponentContainer extends React.Component<Props, State> {
       downModalVisible,
       updateModalVisible,
       defaultValue,
-      clusterType,
       uploadPack,
       deployType,
       bodyWidth,
@@ -404,7 +404,7 @@ class ComponentContainer extends React.Component<Props, State> {
                 {Array.isArray(componentList) &&
                   componentList.map((o: any) => (
                     <Option key={o.product_name}>
-                      {o.product_name}
+                      {o.product_name_display}
                     </Option>
                   ))}
               </Select>

@@ -26,31 +26,6 @@ export const updateProductConfig = (params: any) => {
       });
   };
 };
-
-// 获取平滑升级下的组件名称
-export const saveForcedUpgrade = (params: any) => {
-  return {
-    type: deployActionTypes.SAVE_FORCED_UPGRADE,
-    payload: params,
-  };
-};
-
-// 保存升级模式
-export const getUpgradeType = (params: any) => {
-  return {
-    type: deployActionTypes.UPGRADE_TYPE,
-    payload: params,
-  };
-};
-
-// 判断是是第一次平滑升级
-export const getIsFirstSmooth = (params: any) => {
-  return {
-    type: deployActionTypes.GET_FIRST_SMOOTH,
-    payload: params,
-  };
-};
-
 export const modifyServiceInput = (params: any) => {
   if (params.type === 0) {
     // Instance
@@ -537,7 +512,4 @@ export interface DeployActionTypes {
   forceStop: Function;
   forceUninstall: Function;
   getUnDeployLog: Function;
-  saveForcedUpgrade: Function;
-  getUpgradeType: Function;
-  getIsFirstSmooth: Function;
 }

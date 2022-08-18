@@ -3,18 +3,15 @@ import { Select, Menu, Icon } from 'antd';
 import { alertModal } from '@/utils/modal';
 import { connect } from 'react-redux';
 import { AppStoreTypes } from '@/stores';
-import { InstallGuideActionTypes } from '@/actions/installGuideAction';
 import { EnumDeployMode } from './types';
 import classnames from 'classnames';
-import '../style.scss';
 
 // const Search = Input.Search;
 const Option = Select.Option;
 const MenuItem = Menu.Item;
 const SubMenu = Menu.SubMenu;
 interface Prop {
-  actions?: InstallGuideActionTypes;
-  productServicesInfo: any[];
+  productServicesInfo: any;
   selectedProduct: any;
   setSelectedConfigService: Function;
   updateServiceHostList: Function;
@@ -25,10 +22,6 @@ interface Prop {
   deployState?: string;
   deployMode: EnumDeployMode;
   saveInstallInfo: Function;
-  upgradeType?: string;
-  namespace?: string;
-  productName?: string;
-  smoothSelectService?: any;
 }
 
 interface State {
@@ -44,9 +37,6 @@ interface State {
 const mapStateToProps = (state: AppStoreTypes) => ({
   runtimeState: state.InstallGuideStore.runtimeState,
   deployState: state.InstallGuideStore.deployState,
-  namespace: state.InstallGuideStore.namespace,
-  upgradeType: state.DeployStore.upgradeType,
-  smoothSelectService: state.InstallGuideStore.smoothSelectService
 });
 @(connect(mapStateToProps) as any)
 class StepThreeSide extends React.Component<Prop, State> {
@@ -109,26 +99,10 @@ class StepThreeSide extends React.Component<Prop, State> {
   }
 
   serviceSelected = (params: any) => {
-    const { runtimeState, deployState, clusterId, upgradeType, productName, smoothSelectService } = this.props;
+    const { runtimeState, deployState, clusterId } = this.props;
     if (!alertModal(runtimeState, deployState)) {
       return;
     }
-    let final_upgrade = false
-    if (smoothSelectService?.ServiceAddr) {
-      if (smoothSelectService?.ServiceAddr?.UnSelect) {
-        final_upgrade = false
-      } else {
-        final_upgrade = true
-      }
-    }
-    if (params.ServiceDisplay === 'mysql' && upgradeType === 'smooth') {
-      this.props.actions.setSqlErro({
-        product_name: productName,
-        cluster_id: clusterId,
-        final_upgrade: final_upgrade,
-        ip: params.ServiceAddr.IP.toString()
-      })
-    } 
     this.props.updateServiceHostList({
       productName: this.props.selectedProduct.ProductName,
       serviceName: params.serviceKey,
@@ -320,12 +294,12 @@ class StepThreeSide extends React.Component<Prop, State> {
     if (!alertModal(runtimeState, deployState)) return;
     const { productServicesInfo } = this.props;
     const selectedProduct = productServicesInfo.find(
-      (product) => product.productName === filter.productName
+      (product) => product.productName === filter
     );
     const nextOpenKeys = this.getAllOpenKeys(selectedProduct.content);
     this.setState(
       {
-        productNameFilter: filter.productName,
+        productNameFilter: filter,
         openKeys: nextOpenKeys,
       },
       () => {
@@ -347,20 +321,7 @@ class StepThreeSide extends React.Component<Prop, State> {
       </Option>
     ));
     return (
-      <div style={{display: 'flex'}}>
-        {deployMode === EnumDeployMode.AUTO && (
-        <div className='stepThreeProductList'>
-            <div className='stepThreeProductListTop'>组件</div>
-            {productServicesInfo.map(item => {
-              return (
-                <div 
-                    onClick={(item) => this.handleProdutNameFilter(item)}
-                    className={item.productName == productNameFilter ? 'stepThreeListItem activeItem' : 'stepThreeListItem'}
-                    key={item.productName} > {item.productName} {item.version}
-                </div>
-              )
-            })}
-        </div> )}
+      // TODO:行间样式问题
       <div
         style={{ width: this.props.width }}
         className="step-three-side-container">
@@ -438,7 +399,6 @@ class StepThreeSide extends React.Component<Prop, State> {
               )}
           </Menu>
         </div>
-      </div>
       </div>
     );
   }

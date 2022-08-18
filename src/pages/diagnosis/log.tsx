@@ -182,11 +182,16 @@ class Log extends React.Component<Prop & FormComponentProps, DashBoardState> {
   getProductList = (curParentProduct: any) => {
     const self = this;
     servicePageService
-      .getProductName({ parentProductName: curParentProduct })
+      .getProductList({ limit: 0, parentProductName: curParentProduct })
       .then((res: any) => {
         res = res.data;
         if (res.code === 0 && res.data?.list) {
-          const list = res.data?.list;
+          const list = [];
+          for (const p of res.data.list) {
+            if (p.is_current_version === 1) {
+              list.push(p);
+            }
+          }
           self.setState({
             products: list,
           });

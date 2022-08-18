@@ -8,7 +8,6 @@ import Utils from '@/utils/utils';
 import { encryptStr, encryptSM } from '@/utils/password';
 import HeaderNamespace from '@/components/headerNamespace';
 import ResetPassword from '@/pages/userCenter/components/resetPassword';
-import InstallGuideModal from '@/components/installGuide';
 const logoPng = require('public/imgs/logo@2x.png'); // tslint:disable-line
 
 const MenuItem = Menu.Item;
@@ -26,7 +25,6 @@ interface State {
   selfInfo: any;
   isCheckedResetPwd: boolean;
   showModal: boolean;
-  showInstallGuide: boolean;
 }
 
 class RootHeader extends React.Component<Props, State> {
@@ -34,7 +32,6 @@ class RootHeader extends React.Component<Props, State> {
     selfInfo: {},
     isCheckedResetPwd: false,
     showModal: false,
-    showInstallGuide: false
   };
 
   componentDidMount() {
@@ -107,7 +104,8 @@ class RootHeader extends React.Component<Props, State> {
       this.props.history.push(firstLink.url);
     } else {
       // 兼容部署向导
-      this.setState({showInstallGuide: true})
+      Utils.setNaviKey('', '');
+      this.props.history.push(current.url);
     }
   };
 
@@ -198,14 +196,9 @@ class RootHeader extends React.Component<Props, State> {
     });
   };
 
-  // 关闭部署向导弹框
-  closeInstallGuideShow = () => {
-    this.setState({showInstallGuide: false})
-  }
-
   render() {
-    const { authorityList, history } = this.props;
-    const { selfInfo, showModal, isCheckedResetPwd, showInstallGuide } = this.state;
+    const { authorityList } = this.props;
+    const { selfInfo, showModal, isCheckedResetPwd } = this.state;
     const firstLevelNav = sessionStorage.getItem('firstLevelNav');
     return (
       <Header className="root-nav">
@@ -268,11 +261,6 @@ class RootHeader extends React.Component<Props, State> {
           isCheckedResetPwd={isCheckedResetPwd}
           onCancel={this.resetPwdModalShow}
           onSubmit={this.handleResetSubmit}
-        />
-        <InstallGuideModal
-          onClose={this.closeInstallGuideShow}
-          history={history}
-          visible={showInstallGuide}
         />
       </Header>
     );

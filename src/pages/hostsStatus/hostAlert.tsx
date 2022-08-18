@@ -88,7 +88,9 @@ const AlertHost: React.FC<AlertServiceProps> = ({ history, ip }) => {
   };
 
   const getDashboard = (record: AlertRecordProps) => {
-    let path: string = `/deploycenter/monitoring/dashdetail?url=${record.url}`;
+    let path: string = `/deploycenter/monitoring/dashdetail?url=${record.url}${
+      ip ? `&var-node=${ip}` : ''
+    }`;
     Utils.setNaviKey('menu_deploy_center', 'sub_menu_dashboard');
     history.push(path);
   };
@@ -103,7 +105,8 @@ const AlertHost: React.FC<AlertServiceProps> = ({ history, ip }) => {
       pagination={false}
       scroll={{ y: true }}
       style={{ height: 485 }}
-      size="middle">
+      size="middle"
+    >
       <Table.Column
         title="指标名称"
         key="panel_title"

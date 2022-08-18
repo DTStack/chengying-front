@@ -4,7 +4,6 @@ import { ActionType, InstallGuideStore } from './modals';
 
 export type InstallGuideStoreTypes = InstallGuideStore;
 const defaultStore: InstallGuideStore = {
-  sqlErro: '',
   runtimeState: 'normal',
   deployState: 'normal',
   step: 0,
@@ -13,7 +12,7 @@ const defaultStore: InstallGuideStore = {
   productPackageList: [],
   clusterList: [], // 集群列表
   namespaceList: [], // namespace列表
-  smoothSelectService: {},
+
   productServicesInfo: {},
   hostInstallToList: [],
   selectedService: {
@@ -191,10 +190,8 @@ const switchIt = (type: any, payload: any, state: any) => {
       newState = { ...state, namespaceList: payload };
       break;
     case InstallGuideActions.SET_SELECTED_CONFIG_SERVICE:
+      console.log('设置selectedService');
       newState = { ...state, selectedService: payload };
-      break;
-    case InstallGuideActions.SET_SMOOTH_SELECT_SERVICE:
-      newState = { ...state, smoothSelectService: payload };
       break;
     case InstallGuideActions.UPDATE_SERVICE_HOST_LIST:
       newState = { ...state, serviceHostList: payload, resourceState: {} };
@@ -269,9 +266,6 @@ const switchIt = (type: any, payload: any, state: any) => {
       return newState;
     case InstallGuideActions.SET_OLD_HOST_INFO:
       newState = { ...state, oldHostInfo: payload };
-      return newState;
-    case InstallGuideActions.SET_SQL_ERRO:
-      newState = { ...state, sqlErro: payload };
       return newState;
     default:
       newState = state;

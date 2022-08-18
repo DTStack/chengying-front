@@ -1,1 +1,0 @@
-"use strict";(self.webpackChunkdt_em_front=self.webpackChunkdt_em_front||[]).push([[8789],{48789:(e,t,n)=>{n.r(t),n.d(t,{default:()=>f});var r=n(67294),c=n(67908);const f=function(){return r.createElement("p",{style:{lineHeight:"200px",textAlign:"center",fontSize:"20px",fontWeight:500}},r.createElement(c.Z,{className:"mr-8",type:"frown-o"}),"您尚无访问权限，或该页面不存在")}}}]);

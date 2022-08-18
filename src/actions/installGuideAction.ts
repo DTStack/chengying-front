@@ -263,37 +263,6 @@ export const getProductPackageList = (param: any, callback?: Function) => {
     // });
   };
 };
-
-export const getProductStepOneList = (
-  param: any,
-  status?: boolean,
-  callback?: Function
-) => {
-  return (dispatch: Dispatch) => {
-    installGuideService.getProductStepOneList(param).then((res: any) => {
-      if (res.data.code === 0) {
-        res.data.data.list.map((item) => {
-          item.isOpen = status;
-          item.list = item.Children;
-          delete item.Children;
-          return item;
-        });
-        dispatch({
-          type: InstallGuideActions.UPDATE_PRODUCT_PACEAGE_LIST,
-          payload: res.data.data.list,
-        });
-        callback && callback();
-      } else {
-        message.error(res.data.msg);
-      }
-    });
-    // dispatch({
-    //   type: InstallGuideActions.UPDATE_PRODUCT_PACEAGE_LIST,
-    //   payload: A.data.list
-    // });
-  };
-};
-
 export const resetInstallGuideConfig = (params?: any) => {
   return (dispatch: Dispatch) => {
     dispatch({
@@ -314,28 +283,12 @@ export const quitGuide = () => {
 
 // 第三步获取产品下的服务组信息
 // import C from "public/json/productServicesInfo";
-export const getProductServicesInfo = (
-  params: any,
-  callback?: Function,
-  forcedUpgrade?: any[]
-) => {
+export const getProductServicesInfo = (params: any, callback?: Function) => {
   return (dispatch: Dispatch) => {
     installGuideService.getProductServicesInfo(params).then((res: any) => {
       if (res.data.code === 0) {
         callback && callback(res.data.data); // tslint:disable-line
-        if (forcedUpgrade?.length > 0) {
-          let list = res.data.data;
-          for (let i of Object.values(list)) {
-            for (let values of Object.keys(i)) {
-              if (forcedUpgrade.includes(values)) {
-                dispatch({
-                  type: InstallGuideActions.SET_SMOOTH_SELECT_SERVICE,
-                  payload: i[values],
-                });
-              }
-            }
-          }
-        }
+        console.log('------侧边栏服务列表', res.data.data);
         dispatch({
           type: InstallGuideActions.UPDATE_PRODUCT_SERVICES_INFO,
           payload: res.data.data,
@@ -469,14 +422,6 @@ export const saveResourceState = (params: any) => {
   return (dispatch: Dispatch) => {
     dispatch({
       type: InstallGuideActions.SAVE_RESOURCE_STATE,
-      payload: params,
-    });
-  };
-};
-export const saveSmoothSelected = (params: any) => {
-  return (dispatch: Dispatch) => {
-    dispatch({
-      type: InstallGuideActions.SET_SMOOTH_SELECT_SERVICE,
       payload: params,
     });
   };
@@ -812,21 +757,6 @@ export const setOldHostInfo = (params: any) => {
   };
 };
 
-// MySQL地址校验
-export const setSqlErro = (params: any) => {
-  return (dispatch: Dispatch) => {
-    installGuideService.checkMySqlAddr(params).then((res: any) => {
-      res = res.data;
-      if (res.code == 0) {
-        dispatch({
-          type: InstallGuideActions.SET_SQL_ERRO,
-          payload: res.data,
-        });
-      }
-    });
-  };
-};
-
 export interface InstallGuideActionTypes {
   // tslint:disable-line
   nextStep: Function;
@@ -866,8 +796,5 @@ export interface InstallGuideActionTypes {
   saveSelectNamespace: Function; // 存储第一步保存的命名空间
   saveSelectBaseCluster: Function; // 存储第二步的依赖集群
   checkDefaultImageStore: Function; // 第一步时校验默认仓库是否存在
-  setOldHostInfo: Function;
-  setSqlErro: Function;
-  saveSmoothSelected: Function;
-  getProductStepOneList: Function;
+  setOldHostInfo: Function; //
 }

@@ -1,10 +1,6 @@
 import * as React from 'react';
 import { message, Collapse, Input, Modal, Icon, Select } from 'antd';
-import {
-  servicePageService,
-  productService,
-  userCenterService,
-} from '@/services';
+import { servicePageService, productService, userCenterService } from '@/services';
 import { CurrentProductionParams } from '@/services/ServicePageService';
 import ClassNames from 'classnames';
 import Config from './config';
@@ -60,7 +56,7 @@ export default class ConfigParams extends React.PureComponent<any, IState> {
     currentHosts: [],
     diffData: { before: '', after: '' },
     selectHost: '',
-    encryptInfo: {},
+    encryptInfo: {}
   };
 
   componentDidMount() {
@@ -136,14 +132,15 @@ export default class ConfigParams extends React.PureComponent<any, IState> {
     );
   };
 
+
   getPublicKey = async () => {
     const { data } = await userCenterService.getPublicKey();
     if (data.code !== 0) {
       return;
     }
     this.setState({
-      encryptInfo: data.data,
-    });
+      encryptInfo: data.data
+    })
   };
 
   // 获取配置文件内容
@@ -184,7 +181,6 @@ export default class ConfigParams extends React.PureComponent<any, IState> {
         servicePath: value,
       })
       .then((res) => {
-        this.handleFileChange(value);
         const fileContent = res.data.data;
         const oldParamArray = this.getParamArray(fileContent);
         this.setState({
@@ -622,8 +618,8 @@ export default class ConfigParams extends React.PureComponent<any, IState> {
   handleDispath = () => {
     const { authorityList } = this.props;
     if (!authorityList.service_config_distribute) {
-      message.error('权限不足，请联系管理员！');
-      return;
+      message.error('权限不足，请联系管理员！')
+      return
     }
     const { visibleConfig } = this.state;
     if (!visibleConfig) {
@@ -768,7 +764,7 @@ export default class ConfigParams extends React.PureComponent<any, IState> {
       diffData,
       selectHost,
       repeatParams,
-      encryptInfo,
+      encryptInfo
     } = this.state;
 
     const couldSaveConfig =

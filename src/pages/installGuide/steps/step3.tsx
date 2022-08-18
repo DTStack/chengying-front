@@ -1,13 +1,11 @@
 import * as React from 'react';
-import {connect} from 'react-redux';
-import { InstallGuideStore, DeployStore } from '@/stores/modals';
+import { InstallGuideStore } from '@/stores/modals';
 import { InstallGuideActionTypes } from '@/actions/installGuideAction';
 import SideNav from './step3.side';
 import ConfigServiceComp from '@/components/configServices';
 import {installGuideService} from '@/services';
 import { message, Tooltip, Icon, Modal } from 'antd';
 import { EnumDeployMode } from './types';
-import { AppStoreTypes } from '@/stores';
 import * as Http from '@/utils/http';
 declare const window: any;
 
@@ -17,15 +15,8 @@ interface Prop {
   isKubernetes: boolean;
   deployMode: EnumDeployMode;
   refreshDeployService: Function;
-  DeployProp: DeployStore;
-  productName: string;
-  smoothSelectService?: any;
 }
 
-const mapStateToProps = (state: AppStoreTypes) => ({
-  smoothSelectService: state.InstallGuideStore.smoothSelectService
-});
-@(connect(mapStateToProps) as any)
 class StepThree extends React.Component<Prop, any> {
   constructor(props) {
     super(props);
@@ -43,7 +34,6 @@ class StepThree extends React.Component<Prop, any> {
     this.getHostRoleMap();
     this.getOldHostInfo();
     const { namespace, baseClusterId, clusterId } = this.props.installGuideProp;
-    const { upgradeType } = this.props.DeployProp;
     const params: any = {
       productName: this.props.installGuideProp.selectedProduct.ProductName,
       productVersion:
@@ -55,9 +45,6 @@ class StepThree extends React.Component<Prop, any> {
     if (!params.productName || !params.productVersion) {
       return;
     }
-    if (upgradeType === 'smooth') {
-      Object.assign(params, {upgrade_mode: 'smooth'})
-    } 
     // servicegroup
     installGuideService.getProductServicesInfo(params).then((res) => {
       const arrData = res.data.data;
@@ -77,11 +64,12 @@ class StepThree extends React.Component<Prop, any> {
 
   // 获取老版本服务主机编排和配置信息
   getOldHostInfo = () => {
-    const { installGuideProp, actions, productName } = this.props;
+    const { installGuideProp, actions } = this.props;
+    console.log(actions)
     installGuideService
       .getOldHostInfo(
         {
-          productName: installGuideProp.selectedProduct.ProductName || productName,
+          productName: installGuideProp.selectedProduct.ProductName,
         },
         {
           cluster_id: installGuideProp.clusterId || installGuideProp.baseClusterId
@@ -282,22 +270,17 @@ class StepThree extends React.Component<Prop, any> {
    * 手动部署刷新左侧列表
    */
   refreshDeployServiceForManual = (shouldGetHost?: boolean) => {
-    const { forcedUpgrade, upgradeType } = this.props.DeployProp;
     const baseClusterId = this.props.installGuideProp.baseClusterId;
-    let params = {
-      productName: this.props.installGuideProp.selectedProduct.ProductName,
-      productVersion:
-        this.props.installGuideProp.selectedProduct.ProductVersion,
-      unSelectService: this.props.installGuideProp.unSelectedServiceList,
-      relynamespace: baseClusterId === -1 ? undefined : baseClusterId,
-      namespace: this.props.installGuideProp.namespace,
-      clusterId: this.props.installGuideProp.clusterId,
-    }
-    if (upgradeType ==='smooth') {
-      Object.assign(params, {upgrade_mode: 'smooth'})
-    }
     this.props.actions.getProductServicesInfo(
-      params,
+      {
+        productName: this.props.installGuideProp.selectedProduct.ProductName,
+        productVersion:
+          this.props.installGuideProp.selectedProduct.ProductVersion,
+        unSelectService: this.props.installGuideProp.unSelectedServiceList,
+        relynamespace: baseClusterId === -1 ? undefined : baseClusterId,
+        namespace: this.props.installGuideProp.namespace,
+        clusterId: this.props.installGuideProp.clusterId,
+      },
       (res: any) => {
         // 重新设置selectedService
         for (const fk in res) {
@@ -318,34 +301,12 @@ class StepThree extends React.Component<Prop, any> {
             serviceName: this.props.installGuideProp.selectedService.serviceKey,
             clusterId: this.props.installGuideProp.clusterId,
           });
-      },
-      forcedUpgrade
+      }
     );
   };
 
-  checkSql = (p: any) => {
-    const { clusterId } = this.props.installGuideProp;
-    const { productName, smoothSelectService  } = this.props;
-    let final_upgrade = false
-    if (smoothSelectService?.ServiceAddr) {
-      if (smoothSelectService?.ServiceAddr?.UnSelect) {
-        final_upgrade = false
-      } else {
-        final_upgrade = true
-      }
-    }
-    this.props.actions.setSqlErro({
-      product_name: productName,
-      cluster_id: clusterId,
-      final_upgrade: final_upgrade,
-      ip: p.toString()
-    })
-  }
-
   submitHost = (p: any) => {
-    const { upgradeType } = this.props.DeployProp;
-    const { namespace, clusterId, selectedService } = this.props.installGuideProp;
-    
+    const { namespace, clusterId } = this.props.installGuideProp;
     installGuideService
       .setIp(
         {
@@ -363,9 +324,6 @@ class StepThree extends React.Component<Prop, any> {
         if (res.code === 0) {
           message.success('保存成功');
           this.getProductServicesInfo(true);
-          if (selectedService.serviceKey == 'mysql' && upgradeType === 'smooth') {
-            this.checkSql(p)
-          }
         } else {
           message.error(res.msg);
         }
@@ -533,7 +491,7 @@ class StepThree extends React.Component<Prop, any> {
   };
 
   render() {
-    const { selectedService, serviceHostList } =
+    const { selectedService, serviceHostList, selectedProduct } =
       this.props.installGuideProp;
     // const { Status } = selectedProduct;
     // let p;
@@ -576,11 +534,9 @@ class StepThree extends React.Component<Prop, any> {
           <SideNav
             ref={(ref) => (this.sideNav = ref)}
             width={200}
-            actions={this.props.actions}
             selectedService={this.props.installGuideProp.selectedService}
             updateServiceHostList={this.props.actions.updateServiceHostList}
             selectedProduct={this.props.installGuideProp.selectedProduct}
-            productName={this.props.productName}
             clusterId={this.props.installGuideProp.clusterId}
             setSelectedConfigService={
               this.props.actions.setSelectedConfigService
@@ -642,7 +598,6 @@ class StepThree extends React.Component<Prop, any> {
                       this.props.installGuideProp.selectedProduct
                     }
                     installGuideProp={this.props.installGuideProp}
-                    DeployProp={this.props.DeployProp}
                     actions={this.props.actions}
                     isKubernetes={this.props.isKubernetes}
                     sname={

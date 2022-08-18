@@ -12,7 +12,6 @@ interface Prop {
   delNoDataChart: Function;
 }
 export default function index(props: Prop) {
-  debugger;
   const { config, time, index, delNoDataChart } = props;
   const [option, setOption] = React.useState<any>({});
   const [chartData, setChartData] = React.useState<any>({});
