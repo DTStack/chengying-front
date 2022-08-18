@@ -1,66 +1,47 @@
 const path = require('path');
-const webpack = require("webpack");
+const webpack = require('webpack');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
 const TerserPlugin = require('terser-webpack-plugin');
 const MonacoWebpackPlugin = require('monaco-editor-webpack-plugin');
 const MonacoConfig = require('./monacoConfig');
-const VERSION = JSON.stringify(require("./package.json").version); // app version.
+const VERSION = JSON.stringify(require('./package.json').version); // app version.
 
-const isProd = process.env.NODE_ENV === "production";
+const isProd = process.env.NODE_ENV === 'production';
 
 module.exports = {
-
   entry: {
     app: { import: './src/app.tsx', dependOn: 'default-vendors' },
-    'default-vendors': ['react', 'react-dom', 'react-redux', 'react-router-dom', 'moment', 'js-cookie'],
-  },
-
-  module: {
-    rules: [
-      {
-        test: /\.(js|ts[x]?)$/,
-        exclude: /node_modules/,
-        use: [
-          {
-            loader: "babel-loader",
-            options: {
-              cacheDirectory: true,
-            },
-          },
-          {
-            loader: 'thread-loader',
-            options: {
-              workers: 3,
-            },
-          }
-        ]
-      }
-    ]
+    'default-vendors': [
+      'react',
+      'react-dom',
+      'react-redux',
+      'react-router-dom',
+      'moment',
+      'js-cookie',
+    ],
   },
 
   plugins: [
-
     new MonacoWebpackPlugin({
       features: MonacoConfig.features,
       languages: MonacoConfig.languages,
     }),
 
-    new CopyWebpackPlugin([{
-      from: path.resolve(__dirname, './public')
-    }], {
-      ignore: [
-        'json/*.ts',
-        'imgs/*',
-        'styles/*',
-        'fonts/emfont/*',
-        'sw.js',
+    new CopyWebpackPlugin(
+      [
+        {
+          from: path.resolve(__dirname, './public'),
+        },
       ],
-    }),
+      {
+        ignore: ['json/*.ts', 'imgs/*', 'styles/*', 'fonts/emfont/*', 'sw.js'],
+      }
+    ),
 
     new webpack.DefinePlugin({
       APP: {
-        VERSION: VERSION
-      }
+        VERSION: VERSION,
+      },
     }),
   ],
 
@@ -74,13 +55,13 @@ module.exports = {
         terserOptions: {
           compress: {
             drop_console: true,
-            drop_debugger: true
+            drop_debugger: true,
           },
           format: {
-            comments: false
-          }
+            comments: false,
+          },
         },
-        extractComments: false
+        extractComments: false,
       }),
     ],
   },
@@ -88,14 +69,14 @@ module.exports = {
   resolve: {
     fallback: {
       fs: false,
-      module: "empty",
+      module: 'empty',
       path: false,
       events: false,
       os: require.resolve('os-browserify/browser'),
       crypto: require.resolve('crypto-browserify'),
       stream: require.resolve('stream-browserify'),
-      "@": path.resolve(__dirname, './src'),
-      "public": path.resolve(__dirname, './public'),
+      '@': path.resolve(__dirname, './src'),
+      public: path.resolve(__dirname, './public'),
     },
   },
 
@@ -107,8 +88,13 @@ module.exports = {
     host: '0.0.0.0',
     port: 8099,
     open: false,
-    stats: {
-      children: true
+    client: {
+      logging: 'info',
+      overlay: {
+        errors: false,
+        warnings: false,
+      },
+      progress: true,
     },
     proxy: [
       {
@@ -117,13 +103,10 @@ module.exports = {
         ws: true,
       },
       {
-        path: [
-          '/api/**',
-          '/gate/**',
-        ],
+        path: ['/api/**', '/gate/**'],
         // target: 'http://172.16.10.191', // 测试环境
-        target: 'http://172.16.82.176', // 开发环境          
-      }
-    ]
+        target: 'http://172.16.82.176', // 开发环境
+      },
+    ],
   },
 };
