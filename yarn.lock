@@ -9944,10 +9944,10 @@ ko-lints@^1.0.0:
     fast-glob "^3.2.7"
     ko-config "^1.0.0"
 
-ko@^5.2.2:
+ko@5.2.2:
   version "5.2.2"
-  resolved "https://registry.npmmirror.com/ko/download/ko-5.2.2.tgz#db966f5db8bfaa120dc174c75a341ee95492998a"
-  integrity sha1-25ZvXbi/qhINwXTHWjQe6VSSmYo=
+  resolved "https://registry.npmjs.org/ko/-/ko-5.2.2.tgz#db966f5db8bfaa120dc174c75a341ee95492998a"
+  integrity sha512-V13DtAhJtjudX1bkev2lI8hsEFA+jNL41nNS5ilYDL5Rplxd9WUtR0HT4EiMPvU2ikdZdPRCVPx7D4x3WtUtIA==
   dependencies:
     autoprefixer "^10.2.6"
     babel-loader "^8.2.2"
