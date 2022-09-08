@@ -6,6 +6,76 @@
   "description": "",
   "glyphs": [
     {
+      "icon_id": "29772391",
+      "name": "agent节点异常",
+      "font_class": "agentjiedianyichang",
+      "unicode": "e611",
+      "unicode_decimal": 58897
+    },
+    {
+      "icon_id": "29772360",
+      "name": "运行异常",
+      "font_class": "yunhangyichang",
+      "unicode": "e610",
+      "unicode_decimal": 58896
+    },
+    {
+      "icon_id": "29772346",
+      "name": "mysql主从同步",
+      "font_class": "mysqlzhucongtongbu",
+      "unicode": "e60f",
+      "unicode_decimal": 58895
+    },
+    {
+      "icon_id": "29772252",
+      "name": "主机down机",
+      "font_class": "zhujidownji",
+      "unicode": "e60e",
+      "unicode_decimal": 58894
+    },
+    {
+      "icon_id": "29772249",
+      "name": "健康检查",
+      "font_class": "jiankangjiancha",
+      "unicode": "e60d",
+      "unicode_decimal": 58893
+    },
+    {
+      "icon_id": "29772242",
+      "name": "节点总数",
+      "font_class": "jiedianzongshu",
+      "unicode": "e60c",
+      "unicode_decimal": 58892
+    },
+    {
+      "icon_id": "29772237",
+      "name": "告警节点",
+      "font_class": "gaojingjiedian",
+      "unicode": "e60b",
+      "unicode_decimal": 58891
+    },
+    {
+      "icon_id": "29772230",
+      "name": "告警服务数",
+      "font_class": "gaojingfuwushu",
+      "unicode": "e60a",
+      "unicode_decimal": 58890
+    },
+    {
+      "icon_id": "29356364",
+      "name": "全局配置",
+      "font_class": "quanjupeizhi",
+      "unicode": "e609",
+      "unicode_decimal": 58889
+    },
+    {
+      "icon_id": "29356359",
+      "name": "集群巡检",
+      "font_class": "jiqunxunjian",
+      "unicode": "e608",
+      "unicode_decimal": 58888
+    },
+    {
       "icon_id": "28096436",
       "name": "脚本管理",
       "font_class": "yunweijiaobenpingtaibeifen",

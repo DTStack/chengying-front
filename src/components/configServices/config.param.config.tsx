@@ -10,6 +10,7 @@ import {
   Select,
   Tag,
   Button,
+  Tooltip,
 } from 'antd';
 import InputBox from './inputBox';
 import { isEqual, cloneDeep } from 'lodash';
@@ -73,6 +74,8 @@ interface State {
   configEditState: 'edit' | 'normal';
   beforeEditConfig: any;
   editFiled: string[];
+  isShowErro: boolean;
+  isUnlinkHost: boolean;
 }
 const mapStateToProps = (state: AppStoreTypes) => ({
   runtimeState: state.InstallGuideStore.runtimeState,
@@ -103,6 +106,8 @@ class ParamCompConfig extends React.Component<Prop, State> {
     configEditState: 'normal',
     beforeEditConfig: {},
     editFiled: [],
+    isShowErro: false,
+    isUnlinkHost: false,
   };
 
   componentDidMount() {
@@ -156,6 +161,9 @@ class ParamCompConfig extends React.Component<Prop, State> {
         field: config[key].Value[0].field,
         hosts: '',
       });
+      this.setState({
+        isShowErro: true,
+      });
       this.props.setConfig(key, config[key].Value);
     }
   };
@@ -195,8 +203,21 @@ class ParamCompConfig extends React.Component<Prop, State> {
   };
 
   // 多数组输入框修改信息
-  handleInputArrayChange = (e: any, field: string, index: number) => {
+  handleInputArrayChange = (
+    e: any,
+    field: string,
+    index: number,
+    isBlur?: boolean
+  ) => {
     const { config } = this.props;
+    let newArr = [...config[field].Value].map((item) => item.field);
+    if (!isBlur) {
+      if (newArr.length > 0 && newArr.includes(e.target.value)) {
+        this.setState({ isShowErro: true });
+      } else {
+        this.setState({ isShowErro: false });
+      }
+    }
     const spliceItem = {
       field: e.target.value,
       hosts: config[field].Value[index].hosts
@@ -207,10 +228,11 @@ class ParamCompConfig extends React.Component<Prop, State> {
     this.setState({
       changeRecorder: [...this.state.changeRecorder, field],
     });
-
     this.props.setConfig(field, config[field].Value);
     this.props.saveParamValue(config[field].Value, `Config.${field}.Value`);
-    // this.props.handleParamBlur(config[field].Value, `Config.${field}.Value`);
+    if (isBlur) {
+      this.props.handleParamBlur(config[field].Value, `Config.${field}.Value`);
+    }
   };
 
   replacePwd = (newValue: any, field: string) => {
@@ -236,6 +258,7 @@ class ParamCompConfig extends React.Component<Prop, State> {
 
   // 渲染节点
   renderNode = (state) => {
+    const { isShowErro } = this.state;
     const { config, noHosts, installGuideProp = {}, repeatParams } = this.props;
     const { installType } = installGuideProp;
     let key = 0;
@@ -329,6 +352,9 @@ class ParamCompConfig extends React.Component<Prop, State> {
                         onChange={(e) =>
                           this.handleInputArrayChange(e, title, index)
                         }
+                        onBlur={(e) => {
+                          this.handleInputArrayChange(e, title, index, true);
+                        }}
                         defaultvalue={
                           typeof config[title].Value === 'string'
                             ? config[title].Value
@@ -370,9 +396,15 @@ class ParamCompConfig extends React.Component<Prop, State> {
                         index === 0 &&
                         repeatParams.some((x) => x === title) && (
                           <p style={{ fontSize: '12px', color: '#ff5f5c' }}>
-                            参数值重复,请重新输入
+                            参数值重复,请重新输入{isShowErro}1
                           </p>
                         )}
+
+                      {isShowErro && index === 0 && (
+                        <p style={{ fontSize: '12px', color: '#ff5f5c' }}>
+                          参数值重复,请重新输入{isShowErro}
+                        </p>
+                      )}
                       <Row
                         style={{
                           marginTop:
@@ -529,7 +561,7 @@ class ParamCompConfig extends React.Component<Prop, State> {
 
   // 渲染Icon
   renderIcon(title) {
-    // const {iconType} = this.state
+    const { configEditState } = this.state;
     const { config } = this.props;
     if (config[title].iconType) {
       return (
@@ -541,6 +573,17 @@ class ParamCompConfig extends React.Component<Prop, State> {
         />
       );
     } else {
+      if (configEditState == 'normal') {
+        return (
+          <Tooltip placement="top" title="请先开放编辑">
+            <Icon
+              type="lock"
+              theme="filled"
+              style={{ fontSize: 20, cursor: 'pointer', marginLeft: '20px' }}
+            />
+          </Tooltip>
+        );
+      }
       return (
         <Icon
           type="lock"
@@ -672,6 +715,16 @@ class ParamCompConfig extends React.Component<Prop, State> {
     const { changeHosts, linkIndex, linkName } = this.state;
     const { config } = this.props;
 
+    // 判断有相同参数值提醒错误
+    let newArr = [...config[linkName].Value].map((item) => item.field);
+    const res = new Map();
+    newArr = newArr.filter((a) => !res.has(a) && res.set(a, 1));
+    console.log(newArr);
+    if (config[linkName].Value.length !== newArr.length) {
+      this.setState({ isShowErro: true });
+    } else {
+      this.setState({ isShowErro: false });
+    }
     const saveHostsItem = {
       field:
         typeof config[linkName].Value[linkIndex] === 'string'
@@ -732,9 +785,25 @@ class ParamCompConfig extends React.Component<Prop, State> {
 
   // 运行配置保存
   runtimeSave = () => {
-    const { config, encryptInfo } = this.props;
-    const { password_key } = this.state;
+    const { config, encryptInfo, hostsSelectList } = this.props;
+    const { password_key, isShowErro } = this.state;
+    let selectHost = [];
+    if (isShowErro) {
+      message.warning('参数值重复,请重新输入');
+      return;
+    }
     for (const title in config) {
+      if (Array.isArray(config[title].Value)) {
+        config[title].Value.forEach((item) => {
+          if (item.hosts) {
+            selectHost.push(item.hosts);
+          }
+        });
+        if (selectHost.length !== hostsSelectList.length) {
+          message.warning('存在主机未关联改参数');
+          return;
+        }
+      }
       if (config[title].iconType) {
         message.warning('请先上锁');
         return;

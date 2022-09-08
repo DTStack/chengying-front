@@ -217,8 +217,6 @@ class AddAlertChannel extends React.Component<P, S> {
         formData: formData,
       },
       () => {
-        console.log('哈哈哈哈哈');
-        console.log(formData);
         setFieldsValue(formData);
       }
     );
@@ -286,7 +284,6 @@ class AddAlertChannel extends React.Component<P, S> {
   fileUploadChange = (info: any) => {
     const { formData } = this.state;
     if (info.file.status !== 'uploading') {
-      console.log(info.file, info.fileList);
     }
     if (info.file.status === 'done') {
       message.success('上传成功');

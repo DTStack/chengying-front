@@ -4,6 +4,23 @@ import * as http from '@/utils/http';
 const { installGuide } = apis;
 
 export default {
+  getProductStepOneList(params: any) {
+    return http[installGuide.getProductStepOneList.method](
+      installGuide.getProductStepOneList.url,
+      params
+    );
+  },
+  checkMySqlAddr(params: any) {
+    const {cluster_id, final_upgrade, ip} = params;
+    return http[installGuide.checkMySqlAddr(params).method](
+      installGuide.checkMySqlAddr(params).url,
+      {
+        cluster_id,
+        final_upgrade,
+        ip,
+      }
+    );
+  },
   getGlobalAutoConfig(params: any) {
     return http[installGuide.getGlobalAutoConfig(params).method](
       installGuide.getGlobalAutoConfig(params).url,
@@ -46,7 +63,7 @@ export default {
     );
   },
   getProductServicesInfo(params: any) {
-    const { namespace, unSelectService, relynamespace, clusterId } = params;
+    const { namespace, unSelectService, relynamespace, clusterId, upgrade_mode } = params;
     return http[installGuide.getProductServicesInfo(params).method](
       installGuide.getProductServicesInfo(params).url,
       {
@@ -54,6 +71,7 @@ export default {
         unchecked_services: unSelectService,
         relynamespace,
         clusterId,
+        upgrade_mode,
       }
     );
   },
@@ -255,4 +273,11 @@ export default {
       params
     );
   },
+  // 检查部署条件接口
+deployCondition(params: any) {
+  return http[installGuide.deployCondition.method](
+    installGuide.deployCondition.url,
+    params
+  );
+ }
 };

@@ -33,7 +33,7 @@ const TransferTable: React.FC<TransferTableBodyProps> = (props) => {
   const rowSelection = {
     onSelectAll(selected, selectedRows) {
       const treeSelectedKeys = selectedRows
-        .filter((item) => !item.disabled)
+        .filter((item) => item)
         .map(({ key }) => key);
       const diffKeys = selected
         ? difference(treeSelectedKeys, selectedKeys)
@@ -43,7 +43,8 @@ const TransferTable: React.FC<TransferTableBodyProps> = (props) => {
     onSelect({ key }, selected) {
       onItemSelect(key, selected);
     },
-    selectedRowKeys: selectedKeys,
+    getCheckboxProps: item => ({ disabled: item.disabled }),
+    selectedRowKeys: selectedKeys
   };
 
   const pagination = {

@@ -3,15 +3,18 @@ import { Select, Menu, Icon } from 'antd';
 import { alertModal } from '@/utils/modal';
 import { connect } from 'react-redux';
 import { AppStoreTypes } from '@/stores';
+import { InstallGuideActionTypes } from '@/actions/installGuideAction';
 import { EnumDeployMode } from './types';
 import classnames from 'classnames';
+import '../style.scss';
 
 // const Search = Input.Search;
 const Option = Select.Option;
 const MenuItem = Menu.Item;
 const SubMenu = Menu.SubMenu;
 interface Prop {
-  productServicesInfo: any;
+  actions?: InstallGuideActionTypes;
+  productServicesInfo: any[];
   selectedProduct: any;
   setSelectedConfigService: Function;
   updateServiceHostList: Function;
@@ -22,6 +25,10 @@ interface Prop {
   deployState?: string;
   deployMode: EnumDeployMode;
   saveInstallInfo: Function;
+  upgradeType?: string;
+  namespace?: string;
+  productName?: string;
+  smoothSelectService?: any;
 }
 
 interface State {
@@ -37,6 +44,9 @@ interface State {
 const mapStateToProps = (state: AppStoreTypes) => ({
   runtimeState: state.InstallGuideStore.runtimeState,
   deployState: state.InstallGuideStore.deployState,
+  namespace: state.InstallGuideStore.namespace,
+  upgradeType: state.DeployStore.upgradeType,
+  smoothSelectService: state.InstallGuideStore.smoothSelectService
 });
 @(connect(mapStateToProps) as any)
 class StepThreeSide extends React.Component<Prop, State> {
@@ -74,8 +84,8 @@ class StepThreeSide extends React.Component<Prop, State> {
     ) {
       const selectedProduct = productServicesInfo[0];
       this.props.saveInstallInfo({
-        ProductName: selectedProduct.productName,
-        ProductVersion: selectedProduct.version,
+        product_name: selectedProduct.productName,
+        product_version: selectedProduct.version,
       });
       this.firstRender = false;
     }
@@ -99,12 +109,28 @@ class StepThreeSide extends React.Component<Prop, State> {
   }
 
   serviceSelected = (params: any) => {
-    const { runtimeState, deployState, clusterId } = this.props;
+    const { runtimeState, deployState, clusterId, upgradeType, productName, smoothSelectService } = this.props;
     if (!alertModal(runtimeState, deployState)) {
       return;
     }
+    let final_upgrade = false
+    if (smoothSelectService?.ServiceAddr) {
+      if (smoothSelectService?.ServiceAddr?.UnSelect) {
+        final_upgrade = false
+      } else {
+        final_upgrade = true
+      }
+    }
+    if (params.ServiceDisplay === 'mysql' && upgradeType === 'smooth') {
+      this.props.actions.setSqlErro({
+        product_name: productName,
+        cluster_id: clusterId,
+        final_upgrade: final_upgrade,
+        ip: params.ServiceAddr.IP.toString()
+      })
+    } 
     this.props.updateServiceHostList({
-      productName: this.props.selectedProduct.ProductName,
+      productName: this.props.selectedProduct.product_name,
       serviceName: params.serviceKey,
       clusterId,
     });
@@ -294,18 +320,18 @@ class StepThreeSide extends React.Component<Prop, State> {
     if (!alertModal(runtimeState, deployState)) return;
     const { productServicesInfo } = this.props;
     const selectedProduct = productServicesInfo.find(
-      (product) => product.productName === filter
+      (product) => product.productName === filter.productName
     );
     const nextOpenKeys = this.getAllOpenKeys(selectedProduct.content);
     this.setState(
       {
-        productNameFilter: filter,
+        productNameFilter: filter.productName,
         openKeys: nextOpenKeys,
       },
       () => {
         this.props.saveInstallInfo({
-          ProductName: selectedProduct.productName,
-          ProductVersion: selectedProduct.version,
+          product_name: selectedProduct.productName,
+          product_version: selectedProduct.version,
         });
         this.props.setSelectedConfigService({});
       }
@@ -315,13 +341,28 @@ class StepThreeSide extends React.Component<Prop, State> {
   render() {
     const { productServicesInfo, deployMode } = this.props;
     const { productNameFilter } = this.state;
+    console.log(productNameFilter)
+    console.log(productServicesInfo)
     const options = this.state.searchData.map((o: any) => (
       <Option key={o} value={o}>
         {o}
       </Option>
     ));
     return (
-      // TODO:行间样式问题
+      <div style={{display: 'flex'}}>
+        {deployMode === EnumDeployMode.AUTO && Array.isArray(productServicesInfo) && (
+        <div className='stepThreeProductList'>
+            <div className='stepThreeProductListTop'>组件</div>
+            {productServicesInfo?.map(item => {
+              return (
+                <div 
+                    onClick={() => this.handleProdutNameFilter(item)}
+                    className={item.productName == productNameFilter ? 'stepThreeListItem activeItem' : 'stepThreeListItem'}
+                    key={item.productName} > {item.productName} {item.version}
+                </div>
+              )
+            })}
+        </div> )}
       <div
         style={{ width: this.props.width }}
         className="step-three-side-container">
@@ -332,26 +373,10 @@ class StepThreeSide extends React.Component<Prop, State> {
             borderRight: '1px solid #DDDDDD',
             position: 'relative',
           }}>
-          {deployMode === EnumDeployMode.AUTO &&
-            Array.isArray(productServicesInfo) && (
-              <Select
-                value={productNameFilter}
-                style={{ width: '138px' }}
-                onChange={this.handleProdutNameFilter}>
-                {productServicesInfo.map((item) => {
-                  return (
-                    <Option key={item.productName} value={item.productName}>
-                      {item.productName} {item.version}
-                    </Option>
-                  );
-                })}
-              </Select>
-            )}
           <div
             style={{
               position: 'relative',
               width: '100%',
-              marginTop: deployMode === EnumDeployMode.AUTO ? '12px' : 0,
             }}>
             <Select
               showSearch
@@ -399,6 +424,7 @@ class StepThreeSide extends React.Component<Prop, State> {
               )}
           </Menu>
         </div>
+      </div>
       </div>
     );
   }

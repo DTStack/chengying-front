@@ -1,5 +1,6 @@
 // 部署状态
-export const deployStatus = {};
+export const deployStatus = {
+};
 
 // 部署状态filter
 export const deployStatusFilter = [
@@ -86,10 +87,4 @@ export const hostStatusInfoMap = {
 
 export const COOKIES = {
   NAMESPACE: 'em_current_k8s_namespace',
-};
-
-export const ROLLBACK_STATUS = {
-  PENDING: 'pending',
-  SUCCESS: 'success',
-  FAILED: 'failed',
 };

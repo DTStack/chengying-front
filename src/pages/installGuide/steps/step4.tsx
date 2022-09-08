@@ -10,8 +10,6 @@ import {
   Icon,
   notification,
   Modal,
-  Steps,
-  message
 } from 'antd';
 
 import { servicePageService, deployService } from '@/services';
@@ -22,8 +20,6 @@ import Logtail from '@/components/logtail';
 import SpecialPagination from '@/components/pagination';
 import FileViewModal from '@/components/fileViewModal';
 import FileLogShow from '@/components/fileLogShow';
-import utils from '@/utils/utils';
-import { Service } from '@/services'
 import * as _ from 'lodash';
 
 interface State {
@@ -41,21 +37,12 @@ interface State {
   visibleServiceLog: boolean;
   serviceGroup: any;
   modalContent: string;
-  currentStep: number;
-  rollbackDbStatu: string;
-  rollbackErrmsg: string
 }
 
 interface Prop {
   actions: InstallGuideActionTypes;
   installGuideProp: InstallGuideStore;
   isKubernetes: boolean;
-}
-
-const roolbackObj = {
-  pending: 'process',
-  success: 'finish',
-  failed: 'error'
 }
 
 class StepFour extends React.Component<Prop, State> {
@@ -80,9 +67,6 @@ class StepFour extends React.Component<Prop, State> {
     modalContent: null,
     serviceGroup: null,
     visibleServiceLog: false,
-    currentStep: 0,
-    rollbackDbStatu: 'pending',
-    rollbackErrmsg: ''
   };
 
   handleScroll = _.debounce((e) => {
@@ -90,7 +74,6 @@ class StepFour extends React.Component<Prop, State> {
       document.getElementsByClassName('ant-table-row')[
         document.getElementsByClassName('ant-table-row').length - 1
       ];
-    if (!ele) return
     console.log(ele.offsetTop);
     if (ele.offsetTop - this.container.scrollTop > 206) {
       this.handScroll = true;
@@ -102,8 +85,7 @@ class StepFour extends React.Component<Prop, State> {
     this.handScroll = false;
     this.container = document.getElementsByClassName('step-main-container')[0];
     this.container.addEventListener('scroll', this.handleScroll);
-    this.isRollback() ? this.getRollbackDbStatus() : this.loadDataInter();
-    this.setState({ currentStep: this.isRollback() ? 0 : 1 })
+    this.loadDataInter();
   }
 
   UNSAFE_componentWillMount() {
@@ -111,34 +93,7 @@ class StepFour extends React.Component<Prop, State> {
       this.container.removeEventListener('scroll', this.handleScroll);
   }
 
-  // 回滚数据库进度
-  getRollbackDbStatus = () => {
-    clearInterval(this.timer)
-    this.timer = setInterval(async () => {
-      const { installGuideProp } = this.props;
-      const { data: { data } } = await Service.getRollbackDbStatus({
-        cluster_id: (utils.getParamsFromUrl(window.location.href) as any).cluster_id,
-        product_name: installGuideProp.selectedProduct.ProductName
-      });
-
-      if (data.rollback_status === 'success') {
-        this.setState({ currentStep: 1 })
-        this.loadDataInter()
-      } else if (data.rollback_status === 'failed') {
-        clearInterval(this.timer)
-        message.error('回滚失败！')
-      }
-      
-      this.setState({ 
-        rollbackDbStatu: data.rollback_status,
-        rollbackErrmsg: data.rollback_msg
-      })
-
-    }, 3000);
-  }
-
   loadDataInter = () => {
-    clearInterval(this.timer)
     this.timer = setInterval(() => {
       this.setState({
         timerCount: this.state.timerCount + 1,
@@ -160,13 +115,17 @@ class StepFour extends React.Component<Prop, State> {
         notification.success({
           message: '提示',
           description: '部署成功！',
-          duration: 0,
+          duration: 5,
         });
+        sessionStorage.removeItem('upgradeType')
+        sessionStorage.removeItem('forcedUpgrade')
+        sessionStorage.removeItem('isFirstSmooth')
+        sessionStorage.removeItem('product_backup_info');
       } else if (!(isDeploying || isUndeploying)) {
         notification.error({
           message: '提示',
           description: '部署失败！',
-          duration: 0,
+          duration: 5,
         });
       }
     }, 3000);
@@ -210,13 +169,13 @@ class StepFour extends React.Component<Prop, State> {
         notification.success({
           message: '提示',
           description: '部署成功！',
-          duration: 0,
+          duration: 5,
         });
       } else if (!(isDeploying || isUndeploying)) {
         notification.error({
           message: '提示',
           description: '部署失败！',
-          duration: 0,
+          duration: 5,
         });
       }
     }, 3000);
@@ -242,13 +201,13 @@ class StepFour extends React.Component<Prop, State> {
         notification.success({
           message: '提示',
           description: '部署成功！',
-          duration: 0,
+          duration: 5,
         });
       } else if (!(isDeploying || isUndeploying)) {
         notification.error({
           message: '提示',
           description: '部署失败！',
-          duration: 0,
+          duration: 5,
         });
       }
     }, 3000);
@@ -301,7 +260,7 @@ class StepFour extends React.Component<Prop, State> {
       },
       () => {
         this.loadServiceGroup({
-          product_name: installGuideProp.selectedProduct.ProductName,
+          product_name: installGuideProp.selectedProduct.product_name,
         });
         // this.onSelectedLogService('');
       }
@@ -314,8 +273,8 @@ class StepFour extends React.Component<Prop, State> {
     this.getDeployLog({
       deployId: installGuideProp.deployUUID,
       serviceName: service || '',
-      productName: installGuideProp.selectedProduct.ProductName,
-      productVersion: installGuideProp.selectedProduct.ProductVersion,
+      productName: installGuideProp.selectedProduct.product_name,
+      productVersion: installGuideProp.selectedProduct.product_version,
     });
   };
 
@@ -586,13 +545,8 @@ class StepFour extends React.Component<Prop, State> {
     });
   };
 
-  isRollback = () => {
-    const urlParams = (utils.getParamsFromUrl(window.location.href) as any) || {}
-    return !!urlParams.isRollback
-  }
-
   render() {
-    const { visibleServiceLog, currentStep, rollbackDbStatu, rollbackErrmsg } = this.state;
+    const { visibleServiceLog } = this.state;
     const tableCol = this.initColumns();
     // isDeploying控制当前分页是否继续轮询，true继续轮序，false,不在轮询
     const { installGuideProp, isKubernetes } = this.props;
@@ -615,135 +569,113 @@ class StepFour extends React.Component<Prop, State> {
       <div
         className="step-four-container step-content-container"
         style={{ position: 'relative' }}>
-        {this.isRollback() && <div className='step-four-container-left'>
-          <Steps current={currentStep} size='small' direction="vertical">
-            <Steps.Step title="回滚数据库" status={roolbackObj[rollbackDbStatu]}/>
-            <Steps.Step title="回滚组件" />
-          </Steps>
-        </div>}
-        {currentStep === 0 && rollbackDbStatu === 'failed' && (
-          <div className='step-four-container-right'>
-            <div className="failed">
-              <p>错误日志</p>
-              <div>
-                <p>查看日志</p>
-                <p>{rollbackErrmsg}</p>
-              </div>
-            </div>
-          </div>
-        )}
-        {currentStep === 1 && (
-          <div className='step-four-container-right'>
-            <p className="header-box">
-              <Icon
-                type="exclamation-circle"
-                theme="filled"
-                style={{ color: '#3f87ff', marginRight: 8 }}
+        <p className="header-box">
+          <Icon
+            type="exclamation-circle"
+            theme="filled"
+            style={{ color: '#3f87ff', marginRight: 8 }}
+          />
+          产品包中的已选择服务将在主机上开始部署，可查看服务的安装状态及部署详情。
+        </p>
+        <div
+          className="table-box table-pagination_wraper"
+          style={{ marginBottom: 30 }}>
+          <div>
+            <Table
+              rowKey="id"
+              className="dt-em-table dt-table-border dt-table-last-row-noborder"
+              columns={tableCol}
+              pagination={false}
+              dataSource={this.props.installGuideProp.deployList}
+              onChange={this.handleTableChange}
+            />
+            {isKubernetes && (
+              <FileLogShow
+                wsUrl={`ws://${window.location.host}/api/v2/cluster/kubernetes/${installGuideProp.clusterId}/namespace/${installGuideProp.namespace}/product/${installGuideProp.selectedProduct.id}/installLog`}
               />
-              产品包中的已选择服务将在主机上开始部署，可查看服务的安装状态及部署详情。
-            </p>
-            <div
-              className="table-box table-pagination_wraper"
-              style={{ marginBottom: 30 }}>
-              <div>
-                <Table
-                  rowKey="id"
-                  className="dt-em-table dt-table-border dt-table-last-row-noborder"
-                  columns={tableCol}
-                  pagination={false}
-                  dataSource={this.props.installGuideProp.deployList}
-                  onChange={this.handleTableChange}
-                />
-                {isKubernetes && (
-                  <FileLogShow
-                    wsUrl={`ws://${window.location.host}/api/v2/cluster/kubernetes/${installGuideProp.clusterId}/namespace/${installGuideProp.namespace}/product/${installGuideProp.selectedProduct.ID}/installLog`}
-                  />
-                )}
-                {isDeploying || isUndeploying ? (
-                  <div className="table-pagination_wraper_spin">
-                    <Spin />
-                  </div>
-                ) : null}
-                {!!this.props.installGuideProp.deployList?.length ? (
-                  <SpecialPagination
-                    handleClickTop={() => {
-                      clearInterval(this.timer);
-                      clearInterval(this.timerInterval);
-                      // !this.props.installGuideProp.deployFinished ? this.loadFirstScreenList(): null;
-                      this.props.actions.getCurrentDeployList({
-                        uuid: this.props.installGuideProp.deployUUID,
-                        start: 0,
-                        status: '',
-                      });
-                      (isDeploying || isUndeploying) && this.loadFirstScreenList();
-                    }}
-                    handleClickUp={() => {
-                      clearInterval(this.timer);
-                      clearInterval(this.timerInterval);
-
-                      this.props.actions.getDeployList({
-                        uuid: this.props.installGuideProp.deployUUID,
-                        // 请求前20条数据
-                        start: currentStart,
-                        status: '',
-                      });
-                      // !this.props.installGuideProp.deployFinished ? this.loadCurrentScreenList() : null;
-                      (isDeploying || isUndeploying) &&
-                        this.loadCurrentScreenList(currentStart);
-                    }}
-                    handleClickDown={() => {
-                      clearInterval(this.timer);
-                      clearInterval(this.timerInterval);
-                      this.props.actions.getDeployList({
-                        uuid: this.props.installGuideProp.deployUUID,
-                        start: currentLastStart,
-                        status: '',
-                      });
-                      (isDeploying || isUndeploying) &&
-                        this.loadCurrentScreenList(currentLastStart); // 刷新当前页
-                    }}
-                    handleClickNew={() => {
-                      clearInterval(this.timer);
-                      clearInterval(this.timerInterval);
-                      this.loadLastScreen(); // 是否跳转最后一页(后端处理)
-                      (isDeploying || isUndeploying) &&
-                        this.loadCurrentScreenList(currentLastStart); // 刷新当前页
-                    }}
-                  />
-                ) : null}
+            )}
+            {isDeploying || isUndeploying ? (
+              <div className="table-pagination_wraper_spin">
+                <Spin />
               </div>
-            </div>
-            {deployFail || deploySuccess ? (
-              <Row
-                className="absolute-middle"
-                style={{
-                  textAlign: 'center',
-                  fontSize: '12px',
-                  top: 'auto',
-                  bottom: '20px',
-                }}>
-                {deploySuccess ? (
-                  <span style={{ color: '#12BC6A' }}>
-                    <Icon type="check-circle" /> 部署成功!
-                  </span>
-                ) : null}
-                {deployFail ? (
-                  <span style={{ color: '#FF5F5C' }}>
-                    <Icon type="close-circle" /> 部署失败!
-                  </span>
-                ) : null}
-                {!isKubernetes && (
-                  <span>
-                    &nbsp;&nbsp;
-                    <a onClick={this.showAllServiceLog}>查看全部部署日志</a>
-                  </span>
-                )}
-              </Row>
+            ) : null}
+            {this.props.installGuideProp.deployList &&
+            this.props.installGuideProp.deployList.length > 0 ? (
+              <SpecialPagination
+                handleClickTop={() => {
+                  clearInterval(this.timer);
+                  clearInterval(this.timerInterval);
+                  // !this.props.installGuideProp.deployFinished ? this.loadFirstScreenList(): null;
+                  this.props.actions.getCurrentDeployList({
+                    uuid: this.props.installGuideProp.deployUUID,
+                    start: 0,
+                    status: '',
+                  });
+                  (isDeploying || isUndeploying) && this.loadFirstScreenList();
+                }}
+                handleClickUp={() => {
+                  clearInterval(this.timer);
+                  clearInterval(this.timerInterval);
+
+                  this.props.actions.getDeployList({
+                    uuid: this.props.installGuideProp.deployUUID,
+                    // 请求前20条数据
+                    start: currentStart,
+                    status: '',
+                  });
+                  // !this.props.installGuideProp.deployFinished ? this.loadCurrentScreenList() : null;
+                  (isDeploying || isUndeploying) &&
+                    this.loadCurrentScreenList(currentStart);
+                }}
+                handleClickDown={() => {
+                  clearInterval(this.timer);
+                  clearInterval(this.timerInterval);
+                  this.props.actions.getDeployList({
+                    uuid: this.props.installGuideProp.deployUUID,
+                    start: currentLastStart,
+                    status: '',
+                  });
+                  (isDeploying || isUndeploying) &&
+                    this.loadCurrentScreenList(currentLastStart); // 刷新当前页
+                }}
+                handleClickNew={() => {
+                  clearInterval(this.timer);
+                  clearInterval(this.timerInterval);
+                  this.loadLastScreen(); // 是否跳转最后一页(后端处理)
+                  (isDeploying || isUndeploying) &&
+                    this.loadCurrentScreenList(currentLastStart); // 刷新当前页
+                }}
+              />
             ) : null}
           </div>
-        )}
-        
-
+        </div>
+        {deployFail || deploySuccess ? (
+          <Row
+            className="absolute-middle"
+            style={{
+              textAlign: 'center',
+              fontSize: '12px',
+              top: 'auto',
+              bottom: '20px',
+            }}>
+            {deploySuccess ? (
+              <span style={{ color: '#12BC6A' }}>
+                <Icon type="check-circle" /> 部署成功!
+              </span>
+            ) : null}
+            {deployFail ? (
+              <span style={{ color: '#FF5F5C' }}>
+                <Icon type="close-circle" /> 部署失败!
+              </span>
+            ) : null}
+            {!isKubernetes && (
+              <span>
+                &nbsp;&nbsp;
+                <a onClick={this.showAllServiceLog}>查看全部部署日志</a>
+              </span>
+            )}
+          </Row>
+        ) : null}
         <Modal
           className="logtail-box"
           destroyOnClose={true}

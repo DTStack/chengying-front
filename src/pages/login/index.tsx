@@ -226,8 +226,9 @@ class Login extends React.Component<IProps, State> {
         className="login-container"
         style={{ height: document.body.clientHeight }}>
         <div className="header">
-          <a href="/">
-            <img src={require('public/imgs/logo@2x.png')} />
+          <a href="/" className="header-logo-wrapper">
+            <img src={require('public/imgs/logo_chengying@2x.png')} />
+            <span className="header-logo-name">ChengYing</span>
           </a>
         </div>
         <div style={{ height: document.body.clientHeight - 40, width: '100%' }}>
@@ -236,7 +237,7 @@ class Login extends React.Component<IProps, State> {
             className="content"
             style={{ minHeight: this.state.needValidCode ? 330 : 275 }}>
             <p style={{ fontSize: 18, color: '#333333', marginBottom: 31 }}>
-              欢迎登录EasyManager
+              欢迎登录ChengYing
             </p>
             <Form>
               <FormItem>
@@ -329,7 +330,7 @@ class Login extends React.Component<IProps, State> {
             left: '50%',
             transform: 'translate(-50%,0)',
           }}>
-          EasyManager@V{APP.VERSION}
+          ChengYing@V{APP.VERSION}
         </div>
       </div>
     );

@@ -90,10 +90,10 @@ class InstallGuide extends React.Component<any, IState> {
                     ? 36
                     : titleFontSize,
               }}>
-              欢迎使用 EasyManager 产品部署工具
+              欢迎使用 ChengYing 产品部署工具
             </p>
             <p className="desc" style={{ width: descWidth }}>
-              EasyManager
+              ChengYing
               是一款全自动化全生命周期的运维管家，支持Kubernetes容器与物理/虚拟机两种方式进行多集群部署，提供产品部署、扩缩节点、日志诊断、集群运维、监控告警等一站式服务，轻松实现大数据产品全流程部署与监控。
             </p>
             <Button
@@ -108,7 +108,7 @@ class InstallGuide extends React.Component<any, IState> {
         <div
           className="version"
           style={{ position: 'fixed', bottom: 10, color: '#fff' }}>
-          EasyManager@V{APP.VERSION}
+          ChengYing@V{APP.VERSION}
         </div>
       </div>
     );

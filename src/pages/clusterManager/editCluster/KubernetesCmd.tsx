@@ -77,8 +77,8 @@ const CmdComponent = (props: CmdComponentProps) => {
   const { version, secure, insecure } = props;
   const TEXT_ID = 'J_CMDCode' + (version === '>=1.16' ? '' : '_v1beta1');
   const description = [
-    `Kubernetes 版本${version}，运行下面的kubectl命令将其导入到EasyManager：`,
-    '如果因为EasyManager使用不受信任 / 自签名的SSL证书而出现“由未知颁发机构签名的证书”错误，请运行下面的命令以绕过证书检查：',
+    `Kubernetes 版本${version}，运行下面的kubectl命令将其导入到ChengYing：`,
+    '如果因为ChengYing使用不受信任 / 自签名的SSL证书而出现“由未知颁发机构签名的证书”错误，请运行下面的命令以绕过证书检查：',
   ];
   const tagStyle = {
     color: '#3f87ff',
@@ -90,7 +90,7 @@ const CmdComponent = (props: CmdComponentProps) => {
     <div>
       <p>
         Kubernetes 版本 <Tag style={tagStyle}>{version}</Tag>
-        ，运行下面的kubectl命令将其导入到EasyManager：
+        ，运行下面的kubectl命令将其导入到ChengYing：
       </p>
       <p className="code-content mb-20">{secure}</p>
       <p>{description[1]}</p>

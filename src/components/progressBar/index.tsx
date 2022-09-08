@@ -8,12 +8,11 @@ const multiMapping = {
   MB: 1024 ** 2,
   GB: 1024 ** 3,
   TB: 1024 ** 4,
-  PB: 1024 ** 5,
 };
 
 function formatNum(str: string | number): number {
   if (typeof str === 'string') {
-    const regexExec = /(B|KB|MB|GB|TB|PB)/.exec(str);
+    const regexExec = /(B|KB|MB|GB|TB)/.exec(str);
     const unit = regexExec ? regexExec[0] : null;
     const multi = unit ? multiMapping[unit] : 1;
     const num = str ? numNaN(parseFloat(str)) : 0;

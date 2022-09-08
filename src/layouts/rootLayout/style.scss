@@ -16,7 +16,15 @@
       width: 175px;
       height: inherit;
       & > img {
-        height: 40px;
+        height: 28px;
+      }
+      .dt-header-logo-name {
+        color: #ffffff;
+        padding-left: 4px;
+        font-size: 16px;
+        font-weight: bold;
+        font-family: HelveticaNeue-Bold, HelveticaNeue;
+        line-height: 48px;
       }
     }
 

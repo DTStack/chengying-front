@@ -51,12 +51,13 @@ export default {
         );
     },
     getTaskLog(params: any) {
-        const { limit, start } = params;
+        const { limit, start, execStatus } = params;
         return http[scriptManager.getTaskLog(params).method](
           scriptManager.getTaskLog(params).url,
           {
             'sort-by': 'id',
             'sort-dir': 'desc',
+            'exec-status': execStatus,
             limit,
             start
           }
@@ -67,4 +68,16 @@ export default {
           scriptManager.deleteTask(params).url
         );
     },
+    // 编辑脚本
+    editScript(params: any) {
+      const { describe, exec_timeout, log_retention } = params;
+      return http[scriptManager.editScript(params).method](
+        scriptManager.editScript(params).url,
+        {
+          describe,
+          exec_timeout,
+          log_retention
+        }
+      );
+    }
 }

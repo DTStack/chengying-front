@@ -1,7 +1,9 @@
 import * as React from 'react';
+import { connect } from 'react-redux';
 import { Switch, Input, Row, message, Button, Modal, Icon, Tag } from 'antd';
 import CustomTransfer from '@/components/customTransfer';
 import installGuideService from '@/services/installGuideService';
+import { AppStoreTypes } from '@/stores';
 import { isEqual } from 'lodash';
 declare const window: any;
 
@@ -22,6 +24,11 @@ interface Prop {
   installGuideProp: any;
   actions: any;
   isKubernetes?: boolean;
+  is_Rerro?: boolean;
+  is_Lerro?: boolean;
+  DeployProp?: any;
+  smoothTarget?: any[];
+  initData?: any;
 }
 interface State {
   targetKeys: any[];
@@ -32,8 +39,14 @@ interface State {
   showBtn: boolean;
   isTransferChange: boolean;
   showAutoBtn: boolean;
+  isRerro: boolean;
+  isLerro: boolean;
 }
 
+const mapStateToProps = (state: AppStoreTypes) => ({
+  initData: state.InstallGuideStore,
+});
+@(connect(mapStateToProps) as any)
 class Resource extends React.Component<Prop, State> {
   constructor(props: Prop) {
     super(props);
@@ -48,15 +61,21 @@ class Resource extends React.Component<Prop, State> {
     showBtn: false,
     isTransferChange: false,
     showAutoBtn: false,
+    isRerro: this.props.is_Rerro,
+    isLerro: this.props.is_Lerro,
   };
 
   componentDidMount() {
     // if(this.state.selectedKeys.length === 0 && this.state.targetKeys.length === 0)
-    console.log(this.props);
+    const { upgradeType } = this.props.DeployProp;
+
     if (this.props.hasInstance) {
       this.setState(
         {
-          targetKeys: this.props.targetKeys,
+          targetKeys:
+            upgradeType == 'smooth'
+              ? this.props?.smoothTarget
+              : this.props.targetKeys,
           selectedKeys: this.props.selectedKeys,
         },
         () => {
@@ -71,6 +90,7 @@ class Resource extends React.Component<Prop, State> {
   }
 
   componentDidUpdate(prevProps: Prop) {
+    const { upgradeType } = this.props.DeployProp;
     if (!isEqual(this.props, prevProps)) {
       // 没有instance的时候就没有transferchange
       if (this.state.isTransferChange && this.props.hasInstance) {
@@ -99,15 +119,39 @@ class Resource extends React.Component<Prop, State> {
           });
         }
       );
+      if (this.props?.smoothTarget !== prevProps?.smoothTarget) {
+        this.setState({
+          targetKeys:
+            upgradeType == 'smooth'
+              ? this.props?.smoothTarget
+              : this.props.targetKeys,
+        });
+      }
+      if (this.props.is_Lerro !== prevProps.is_Lerro) {
+        this.setState({ isLerro: this.props.is_Lerro });
+      }
+      if (this.props.is_Rerro !== prevProps.is_Rerro) {
+        this.setState({ isRerro: this.props.is_Rerro });
+      }
       this.initData_left(this.props.hostList);
     }
   }
 
   computeRealTargetKeys = (nextProp: Prop) => {
+    const { upgradeType } = this.props.DeployProp;
+    const { selectedService } = this.props.initData;
     const f: any[] = [];
+    let existIp: any[] = [];
+    if (upgradeType === 'smooth') {
+      existIp = selectedService.ServiceAddr.Select
+        ? [...selectedService.ServiceAddr.Select].map((item) => item.IP)
+        : [];
+    } else {
+      existIp = nextProp.existIp;
+    }
     // tslint:disable-next-line
     nextProp.isCloud === this.state.isCloud_state &&
-      nextProp.existIp.forEach((o: any) => {
+      existIp.forEach((o: any) => {
         this.props.hostList.forEach((q: any) => {
           if (q.ip === o) {
             f.push(q.id);
@@ -117,7 +161,7 @@ class Resource extends React.Component<Prop, State> {
 
     this.setState(
       {
-        targetKeys: f,
+        targetKeys: upgradeType == 'smooth' ? this.props?.smoothTarget : f,
       },
       () => {
         this.initDataRight(f);
@@ -142,6 +186,20 @@ class Resource extends React.Component<Prop, State> {
   };
 
   handleChange = (targetKeys: any, direction: any, moveKeys: any) => {
+    const { selectedService } = this.props.installGuideProp;
+    const { forcedUpgrade, isFirstSmooth } = this.props.DeployProp;
+    // 是否属于可平滑升级的组件
+    if (forcedUpgrade.includes(selectedService.serviceKey) && isFirstSmooth) {
+      if (this.props.hostList?.length === targetKeys.length) {
+        this.setState({ isRerro: false, isLerro: true });
+      } else {
+        if (targetKeys.length === 0) {
+          this.setState({ isLerro: false, isRerro: true });
+        } else {
+          this.setState({ isLerro: false, isRerro: false });
+        }
+      }
+    }
     if (targetKeys.length > this.props.maxSelected) {
       message.error(`IP数量限制${this.props.maxSelected},目前超出限制！`);
       const flagP = targetKeys.filter((tar) => !moveKeys.includes(tar));
@@ -240,9 +298,9 @@ class Resource extends React.Component<Prop, State> {
   handleGetAutoConfig = () => {
     installGuideService
       .getAutoConfig({
-        productName: this.props.selectedProduct.ProductName,
+        productName: this.props.selectedProduct.product_name,
         serviceName: this.props.serviceKey,
-        productVersion: this.props.selectedProduct.ProductVersion,
+        productVersion: this.props.selectedProduct.product_version,
       })
       .then((res) => {
         console.log(res);
@@ -252,9 +310,9 @@ class Resource extends React.Component<Prop, State> {
           this.props.actions.getProductServicesInfo(
             {
               productName:
-                this.props.installGuideProp.selectedProduct.ProductName,
+                this.props.installGuideProp.selectedProduct.product_name,
               productVersion:
-                this.props.installGuideProp.selectedProduct.ProductVersion,
+                this.props.installGuideProp.selectedProduct.product_version,
               unSelectService:
                 this.props.installGuideProp.unSelectedServiceList,
               baseClusterId: baseClusterId === -1 ? undefined : baseClusterId,
@@ -276,7 +334,7 @@ class Resource extends React.Component<Prop, State> {
               }
               this.props.actions.updateServiceHostList({
                 productName:
-                  this.props.installGuideProp.selectedProduct.ProductName,
+                  this.props.installGuideProp.selectedProduct.product_name,
                 serviceName:
                   this.props.installGuideProp.selectedService.serviceKey,
               });
@@ -315,9 +373,9 @@ class Resource extends React.Component<Prop, State> {
     }
     const { role_info = [] } = target;
     return (
-      <span>
-        <span>{ip}</span>
-        <span style={{ marginLeft: '20px' }}>
+      <div className="tagList">
+        <div style={{ width: '100px' }}>{ip}</div>
+        <div style={{ marginLeft: '5px', flex: 1 }}>
           {role_info.map((role, index) => (
             <Tag
               key={index}
@@ -327,13 +385,16 @@ class Resource extends React.Component<Prop, State> {
               {role.role_name}
             </Tag>
           ))}
-        </span>
-      </span>
+        </div>
+      </div>
     );
   };
 
   render() {
-    const { dataList, isCloud_state, targetKeys } = this.state;
+    const { dataList, isCloud_state, targetKeys, isRerro, isLerro } =
+      this.state;
+    const { sqlErro, selectedService } = this.props.installGuideProp;
+    const { forcedUpgrade, upgradeType } = this.props.DeployProp;
 
     const autoBtn = (
       <div style={{ position: 'absolute', right: 30 }}>
@@ -348,13 +409,13 @@ class Resource extends React.Component<Prop, State> {
       </div>
     );
     const {
-      selectedProduct: { Status },
+      selectedProduct: { status },
       Instance = {},
     } = this.props;
 
     const autoBtnShow =
       !isCloud_state &&
-      Status === 'undeployed' &&
+      status === 'undeployed' &&
       Instance.MaxReplica != undefined;
     return (
       <div className="resource-container">
@@ -398,6 +459,11 @@ class Resource extends React.Component<Prop, State> {
                   onChange={(e) => this.handleCloudHostChange(e)}
                   placeholder="可填写多个IP地址，多个IP地址用英文逗号分割开，如172.10.16.2,172.10.20.6。"
                 />
+                {sqlErro && selectedService.serviceKey === 'mysql' && (
+                  <div className="errRight" style={{ display: 'block' }}>
+                    {sqlErro}
+                  </div>
+                )}
               </div>
             </Row>
           </div>
@@ -405,6 +471,12 @@ class Resource extends React.Component<Prop, State> {
           !this.props.isKubernetes && (
             <Row>
               <CustomTransfer
+                disabled={
+                  forcedUpgrade?.includes(selectedService.serviceKey) ||
+                  upgradeType !== 'smooth'
+                    ? false
+                    : true
+                }
                 rowKey={(record: any) => record.id}
                 dataSource={dataList}
                 showSearch
@@ -419,6 +491,12 @@ class Resource extends React.Component<Prop, State> {
                   height: 450,
                 }}
               />
+              {isLerro && (
+                <span className="errRight">
+                  首次平滑升级本服务，请至少保留一台主机
+                </span>
+              )}
+              {isRerro && <span className="errLeft">请至少选择一台主机</span>}
             </Row>
           )
         )}

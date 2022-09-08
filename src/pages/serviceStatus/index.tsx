@@ -61,7 +61,6 @@ interface ServiceState {
   redVisible: boolean;
   noHosts: string;
   repeatParams: any[];
-  currentSelectedIp: string;
   // allHostList: any[];
 }
 
@@ -102,7 +101,6 @@ class ServiceList extends React.Component<ServiceProp, ServiceState> {
     redVisible: false,
     noHosts: '',
     repeatParams: [],
-    currentSelectedIp: undefined,
     // allHostList: [],
   };
 
@@ -255,21 +253,13 @@ class ServiceList extends React.Component<ServiceProp, ServiceState> {
   getProductList = (curParentProduct: any) => {
     const { cur_product_info } = this.state;
     const params: ProductionListParams = {
-      limit: 0,
       parentProductName: curParentProduct,
     };
-    const namespace = utils.k8sNamespace;
-    namespace && (params.namespace = namespace);
     // '/api/v2/product'
-    servicePageService.getProductList(params).then((res: any) => {
+    servicePageService.getProductName(params).then((res: any) => {
       res = res.data;
       if (res.code === 0 && res.data?.list) {
-        const list = [];
-        for (const p of res.data?.list) {
-          if (p.is_current_version === 1) {
-            list.push(p);
-          }
-        }
+        const list = res.data?.list
         if (!list.length) {
           cur_product_info.product_name = '';
           cur_product_info.product_id = -1;
@@ -552,12 +542,6 @@ class ServiceList extends React.Component<ServiceProp, ServiceState> {
     });
   };
 
-  setCurrentSelectedIp = (ip: string) => {
-    this.setState({
-      currentSelectedIp: ip,
-    });
-  };
-
   render() {
     const {
       ServiceStore: { restartService },
@@ -586,10 +570,7 @@ class ServiceList extends React.Component<ServiceProp, ServiceState> {
       dashurl +
       '?theme=light&no-feedback=true' +
       '&var-cluster=' +
-      HeaderStore.cur_parent_cluster.name +
-      this.state.currentSelectedIp
-        ? `&var-instance=${this.state.currentSelectedIp}`
-        : '';
+      HeaderStore.cur_parent_cluster.name;
     const sidenavProps = {
       products,
       cur_product_info: cur_product_info,
@@ -653,8 +634,7 @@ class ServiceList extends React.Component<ServiceProp, ServiceState> {
               className="service-tab c-tabs-padding"
               style={{ padding: '0 0 0 20px' }}
               activeKey={activeKey}
-              onChange={this.handleTabsChange}
-            >
+              onChange={this.handleTabsChange}>
               <TabPane tab="运行状态" key="0">
                 <RuntimeStatus
                   {...this.props}
@@ -664,7 +644,6 @@ class ServiceList extends React.Component<ServiceProp, ServiceState> {
                   getServiceGroup={this.getServiceGroup}
                   products={products}
                   setCurrentService={this.setCurrentService}
-                  setCurrentSelectedIp={this.setCurrentSelectedIp}
                 />
               </TabPane>
               <TabPane tab="参数配置" key="1">
@@ -695,8 +674,7 @@ class ServiceList extends React.Component<ServiceProp, ServiceState> {
           footer={null}
           width={900}
           visible={this.state.log_modal_visible}
-          onCancel={this.handleLogModalCancel.bind(this)}
-        >
+          onCancel={this.handleLogModalCancel.bind(this)}>
           <Logtail
             logs={this.state.logpaths}
             serviceid={this.state.log_service_id}

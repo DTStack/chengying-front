@@ -108,4 +108,15 @@ export default {
   getRoleCodes() {
     return http[userCenter.getRoleCodes.method](userCenter.getRoleCodes.url);
   },
+  // 生成部署文档
+  generate (params: any) {
+    return http[userCenter.generate.method](
+      userCenter.generate.url,
+      params
+    );
+  },
+  // 下载信息部署文档
+  downloadInfo() {
+    return http[userCenter.downloadInfo.method](userCenter.downloadInfo.url);
+  }
 };

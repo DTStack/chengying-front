@@ -82,8 +82,12 @@ export const Service = {
   },
   // 获取产品包升级目标版本列表
   getProductVersionList(params: any) {
+    const { upgrade_mode } = params;
     return http[product.getProductVersionList(params).method](
-      product.getProductVersionList(params).url
+      product.getProductVersionList(params).url,
+      {
+        upgrade_mode,
+      }
     );
   },
   getProductDeployRecords(params: any) {
@@ -177,22 +181,6 @@ export const Service = {
       params
     );
   },
-  // 回滚数据库进度接口
-  getRollbackDbStatus(params: any) {
-    const { url, method } = product.getRollbackDbStatus(params)
-    return http[method](url, params);
-  },
-  // 回滚组件进度接口
-  getNewBackupCpList(params: any) {
-    const { url, method } = product.getNewBackupCpList(params)
-    return http[method](url, params);
-  },
-  // 获取近一小时最新备份状态
-  getNewBackupDbStatus(params: any) {
-    const { url, method } = product.getNewBackupDbStatus(params)
-    return http[method](url, params);
-  },
-  
 };
 
 export { default as productService } from './productService';
@@ -216,3 +204,5 @@ export { default as inspectionReportService } from './inspectionReportService';
 export { default as echoService } from './echoService';
 export { default as securityService } from './securityService';
 export { default as scriptManager } from './scriptManager';
+export { default as globalConfig } from './globalConfig';
+export { default as productLine } from './productLine';

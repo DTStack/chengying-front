@@ -1,10 +1,11 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { Modal, Form, Select, Alert, Button, Icon, message } from 'antd';
+import { Modal, Form, Select, Alert, Button, Icon, message, Radio } from 'antd';
 import { FormComponentProps } from 'antd/lib/form';
 import { formItemBaseLayout } from '@/constants/formLayout';
-import { deployService, Service } from '@/services';
+import { deployService } from '@/services';
 import CommandPopbox from '@/pages/command/details/popbox';
-import { ROLLBACK_STATUS } from '@/constants/const';
+
+
 
 const FormItem = Form.Item;
 const { Option } = Select;
@@ -14,36 +15,33 @@ interface IProps extends FormComponentProps {
   type: string;
   onOk?: (url: string, e?: React.MouseEvent<HTMLElement, MouseEvent>) => void;
   onCancel: (e?: React.MouseEvent<HTMLElement, MouseEvent>) => void;
+  changeUpgradeType: (type: string) => void;
   options: any[];
   clusterId: string | number;
   record: any;
+  isFirstSmooth: boolean;
 }
 
-let timer = null;
-
 const UpgradeModal: React.FC<IProps> = (props) => {
-  const { visible, type, onOk, onCancel, options, clusterId, record, form } =
+  const { visible, type, onOk, onCancel, options, clusterId, record, form, changeUpgradeType } =
     props;
   const { getFieldDecorator, validateFields } = form;
   const [backUpInfo, setBackUpInfo] = useState({
-    backup_status: '-',
-    backup_time: '',
-    product_name: '',
-    source_version: '',
+    status: '',
+    exec_id: '',
     backup_name: '',
-    backup_sqls: '',
   });
-  const [hasNewBackup, setHasNewBackup] = useState(false);
   const [visibleInfo, changePopboxInfo] = useState({
     visible: false,
     title: '查看日志',
     type: 'log',
     execId: '',
   });
-  const [loading, setLoading] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(false)
   const [versions, setVersionList] = useState<string[]>([]);
   const [backupList, setBackUpList] = useState<string[]>([]);
-  const [isPending, setIsPending] = useState<boolean>(false);
+  const [backUpable, setBackUpableStatus] = useState(false);
+  const [defaultRadio, setDefaultRadio] = useState(record?.smooth_upgrade_product ? 'smooth' : 'normal');
   const [title, tips] = useMemo(() => {
     const title = type === 'upgrade' ? '升级' : '回滚';
     const tips: string =
@@ -57,54 +55,21 @@ const UpgradeModal: React.FC<IProps> = (props) => {
     if (type !== 'upgrade') {
       getRollBackList();
     }
-    return () => {
-      clearTimeout(timer);
-    };
   }, []);
 
-  useEffect(() => {
-    visible ? getNewBackupDbStatus() : clearTimeout(timer);
-  }, [visible]);
-
-  const pollingRequest = () => {
-    clearTimeout(timer);
-    timer = setTimeout(getNewBackupDbStatus, 2000);
-  };
-
-  const getNewBackupDbStatus = async () => {
-    const {
-      data: { data, code, msg },
-    } = await Service.getNewBackupDbStatus({
-      cluster_id: clusterId,
-      product_version: record?.product_version,
-      product_name: record?.product_name,
-    });
-    if (code === 0) {
-      setIsPending(data.backup_status === ROLLBACK_STATUS.PENDING);
-      if (data.backup_status !== ROLLBACK_STATUS.PENDING) {
-        setBackUpInfo(data);
-        changePopboxInfo({
-          ...visibleInfo,
-          execId: data.exec_id,
-        });
-      } else {
-        pollingRequest();
-      }
-    } else {
-      message.error(msg);
-    }
-  };
-
   /**
-   * 开始备份
+   * 备份
    */
   async function handleBackUp() {
-    setIsPending(true);
     const param = {
       cluster_id: clusterId,
       source_version: record?.product_version,
       target_version: form.getFieldValue('target_version'),
     };
+    if (backUpInfo.status !== 'running') {
+      setBackUpInfo((preValue) => ({ ...preValue, status: 'running' }));
+      setBackUpableStatus(false);
+    }
     const res = await deployService.handleBackUp(
       {
         productName: record?.product_name,
@@ -113,12 +78,11 @@ const UpgradeModal: React.FC<IProps> = (props) => {
     );
     if (res.data.code === 0) {
       const { data } = res.data;
-      getNewBackupDbStatus();
       // 备份成功，保存备份信息到sessionStorage中,提供升级使用
       if (data.status !== 'running') {
-        changePopboxInfo({ ...visibleInfo, execId: data?.exec_id || '' });
+        setBackUpInfo(data);
+        setBackUpableStatus(true);
         if (type === 'upgrade' && data.status === 'success') {
-          setHasNewBackup(true);
           sessionStorage.setItem(
             'product_backup_info',
             JSON.stringify({
@@ -130,32 +94,47 @@ const UpgradeModal: React.FC<IProps> = (props) => {
         }
       }
     } else {
+      setBackUpInfo((preValue) => ({ ...preValue, status: 'fail' }));
+      setBackUpableStatus(true);
       message.error(res.data.msg);
     }
   }
 
-  async function getRollBackList() {
-    const { data } = await deployService.getRollBackList(
-      { productName: record?.product_name },
-      {
-        cluster_id: clusterId,
-        product_version: record?.product_version,
+  function handleStatus (e) {
+    if (e) {
+      if (record?.smooth_upgrade_product || record?.isChildren) {
+        setBackUpInfo((preValue) => ({ ...preValue, status: 'success' }))
       }
-    );
+    }
+  }
+
+  async function getRollBackList() {
+    let params = {
+      cluster_id: clusterId,
+      product_version: record?.product_version,
+    }
+    if (record?.smooth_upgrade_product || record?.isChildren) {
+      Object.assign(params, {upgrade_mode: 'smooth'})
+    }
+    const { data } = await deployService.getRollBackList( {productName: record?.product_name}, params);
     if (data.code === 0) {
       setVersionList(data.data || []);
     }
   }
 
   async function getBackupTimes(target_version) {
+    let params = {
+      cluster_id: clusterId,
+      target_version,
+    }
+    if (record?.smooth_upgrade_product || record?.isChildren) {
+      Object.assign(params, {upgrade_mode: 'smooth'})
+    }
     const { data } = await deployService.getBackupTimes(
       {
         productName: record?.product_name,
       },
-      {
-        cluster_id: clusterId,
-        target_version,
-      }
+      params,
     );
     if (data.code === 0) {
       setBackUpList(data.data || []);
@@ -167,26 +146,19 @@ const UpgradeModal: React.FC<IProps> = (props) => {
       visible: !prevValue.visible,
       title: '日志查看',
       type: 'log',
-      execId: prevValue.execId,
+      execId: backUpInfo.exec_id,
     }));
   };
 
-  const refreshBackupInfo = () => {
-    if (!hasNewBackup && backUpInfo.backup_status === ROLLBACK_STATUS.SUCCESS) {
-      const info = {
-        cluster_id: clusterId,
-        source_version: backUpInfo.source_version,
-        target_version: form.getFieldValue('target_version'),
-        backup_name: backUpInfo.backup_time,
-        backup_sqls: backUpInfo.backup_sqls,
-      };
-      sessionStorage.setItem('product_backup_info', JSON.stringify(info));
-    }
-  };
+  // 改变升级状态
+  const changeRadioStatus = (e) => {
+    changeUpgradeType(e.target.value)
+    setDefaultRadio(e.target.value)
+  }
 
   // 进入部署向导
   function handleOk() {
-    validateFields(async (err: any, values: any) => {
+    validateFields((err: any, values: any) => {
       if (!err) {
         let param = values.target_version;
         // 回滚时参数
@@ -197,86 +169,66 @@ const UpgradeModal: React.FC<IProps> = (props) => {
             target_version: values.target_version,
             backup_name: values.backup_name,
           };
-          setLoading(true);
-          const { data } = await deployService.handleRollBackCheck(
-            {
-              productName: record?.product_name,
-            },
-            param
-          );
-          if (data.code !== 0) {
-            message.error(data.msg);
-            setLoading(false);
-            return;
-          }
+          setLoading(true)
         }
-        refreshBackupInfo();
         onOk(param);
       }
     });
   }
 
-  const renderStatus = (status: string) => {
-    switch (status) {
-      case ROLLBACK_STATUS.SUCCESS:
-        return (
-          <span className="backupsuccess">
-            <Icon type="check-circle" theme="filled" /> 备份成功{' '}
-            <span>{backUpInfo.backup_time}</span>
-          </span>
-        );
-      case ROLLBACK_STATUS.FAILED:
-        return (
-          <span className="backupfail">
-            <Icon type="close-circle" theme="filled" /> 备份失败{' '}
-            <a onClick={(e) => handleEvent()}>查看日志</a>
-          </span>
-        );
-      default:
-        return '-';
-    }
-  };
+  // 取消
+  function handleCancel() {
+    setLoading(false)
+    onCancel();
+  }
 
-  const completeForm = () => {
-    const { target_version, backup_name } = form.getFieldsValue();
-    return type === 'upgrade'
-      ? !!target_version
-      : !!target_version && !!backup_name;
-  };
+  function handleStatusAble(target_version) {
+    setBackUpableStatus(true);
+    getBackupTimes(target_version);
+  }
 
   return (
     <>
       <Modal
         title={`组件${title}`}
         visible={visible}
-        onCancel={onCancel}
-        width={550}
+        onCancel={handleCancel}
         className="product-modal"
         footer={[
-          <Button key="cancel" onClick={onCancel}>
+          <Button key="cancel" onClick={handleCancel}>
             取消
           </Button>,
           <Button
+            loading={loading}
             key="ok"
             type="primary"
             onClick={handleOk}
-            loading={loading}
-            disabled={
-              backUpInfo?.backup_status !== ROLLBACK_STATUS.SUCCESS ||
-              isPending ||
-              !completeForm()
-            }>
+            disabled={backUpInfo?.status !== 'success'}>
             {title}
           </Button>,
         ]}>
         <Form {...formItemBaseLayout}>
           <Alert className="mb-20" type="info" showIcon message={tips} />
+          {type === 'upgrade' && record?.can_smooth_upgrade &&
+          <FormItem label="升级模式">
+          <Radio.Group 
+            disabled={record?.smooth_upgrade_product ? true : false}
+            onChange={changeRadioStatus}
+            name="radiogroup" 
+            defaultValue={defaultRadio}>
+            <Radio value={'normal'}>普通升级</Radio>
+            <Radio value={'smooth'}>平滑升级</Radio>
+          </Radio.Group>
+          <div className='modeTips'>
+            {defaultRadio === 'normal' ? '一键升级至目标版本，过程中会有短暂停服。' : '通过多次升级平滑过渡至目标版本，升级过程不停服。'}
+          </div>
+          </FormItem>}
           <FormItem label="目标组件版本">
             {getFieldDecorator('target_version', {
               rules: [{ required: true, message: '请选择目标组件版本' }],
             })(
               <Select
-                onChange={(e) => getBackupTimes(e)}
+                onChange={(e) => handleStatusAble(e)}
                 placeholder="请选择目标组件版本">
                 {type === 'upgrade'
                   ? options.map((item: any) => (
@@ -297,7 +249,7 @@ const UpgradeModal: React.FC<IProps> = (props) => {
               {getFieldDecorator('backup_name', {
                 rules: [{ required: true, message: '备份库缺失' }],
               })(
-                <Select placeholder="请选择备份时间">
+                <Select placeholder="请选择备份时间" disabled={!backUpable} onChange={(e) => handleStatus(e)}>
                   {backupList.map((item: any) => (
                     <Option key={item} value={item}>
                       {item}
@@ -307,24 +259,38 @@ const UpgradeModal: React.FC<IProps> = (props) => {
               )}
             </FormItem>
           )}
+          {(type === 'upgrade' || (!record?.smooth_upgrade_product && !record?.isChildren) && type !== 'upgrade') &&
           <FormItem label="备份当前库" style={{ marginBottom: 0 }}>
-            <div className="flex">
-              <Button
-                type="primary"
-                onClick={handleBackUp}
-                disabled={isPending}>
-                开始备份
-              </Button>
-              {isPending && (
+            <Button
+              type="primary"
+              onClick={handleBackUp}
+              disabled={!backUpable}>
+              开始备份
+            </Button>
+            <div className="tips">
+              {backUpInfo?.status === 'running' && (
                 <div className="backuping">
                   <Icon type="reload" spin /> 备份中，请勿退出
                 </div>
               )}
+              {backUpInfo?.status === 'success' && (
+                <div className="backupsuccess">
+                  <span>
+                    <Icon type="check-circle" theme="filled" /> 备份成功
+                  </span>
+                  <span>{backUpInfo.backup_name}</span>
+                </div>
+              )}
+              {backUpInfo?.status === 'fail' && (
+                <div className="backupfail">
+                  <span>
+                    <Icon type="close-circle" theme="filled" /> 备份失败
+                  </span>
+                  <a onClick={(e) => handleEvent()}>查看日志</a>
+                </div>
+              )}
             </div>
-            <p className="tips">
-              近1h最新备份结果：{renderStatus(backUpInfo.backup_status)}
-            </p>
-          </FormItem>
+          </FormItem>}
         </Form>
       </Modal>
       {visibleInfo.visible && (

@@ -9,14 +9,13 @@ import {
   Spin,
   Icon,
   notification,
-  Steps,
 } from 'antd';
 import { connect } from 'react-redux';
 import { Dispatch, bindActionCreators } from 'redux';
 import * as deployAction from '@/actions/deployAction';
 import { AppStoreTypes } from '@/stores';
-import { Service } from '@/services';
 
+import SpecialPagination from '@/components/pagination';
 import Logtail from '@/components/logtail';
 const mapStateToProps = (state: AppStoreTypes) => ({
   deployProps: state.UnDeployStore,
@@ -31,9 +30,6 @@ interface ModalState {
   log_service_id: any;
   title: string;
   status: any;
-  currentStep: number;
-  rollbackDbStatu: string;
-  rollbackErrmsg: string;
 }
 interface ModalProps {
   visible: boolean;
@@ -43,14 +39,7 @@ interface ModalProps {
   onClose?: () => void;
   getDataList?: () => void;
   deployProps?: any;
-  clusterId: string | number;
 }
-
-const roolbackObj = {
-  pending: 'process',
-  success: 'finish',
-  failed: 'error',
-};
 @(connect(mapStateToProps, mapDispatchToProps) as any)
 class UnDeployModal extends React.Component<ModalProps, ModalState> {
   constructor(props: ModalProps) {
@@ -64,25 +53,24 @@ class UnDeployModal extends React.Component<ModalProps, ModalState> {
     log_service_id: '',
     status: '',
     title: '',
-    currentStep: 0,
-    rollbackDbStatu: 'pending',
-    rollbackErrmsg: '',
   };
 
-  componentDidMount() {
-    const { progressType } = this.props;
-    const title = progressType === 'rollback' ? '回滚' : '卸载';
-    this.setState(
-      {
-        title,
-      },
-      () => {
-        this.setState({ currentStep: progressType === 'rollback' ? 0 : 1 });
-        progressType === 'rollback'
-          ? this.getRollbackDbStatus()
-          : this.loadCurrentScreenList(this.props.deployProps.start);
-      }
-    );
+  componentDidUpdate(prevProps, prevState) {
+    const { deployProps, progressType } = this.props;
+    if (
+      deployProps.deploy_uuid &&
+      prevProps.deployProps.deploy_uuid !== deployProps.deploy_uuid
+    ) {
+      const title = progressType === 'rollback' ? '回滚' : '卸载';
+      this.setState(
+        {
+          title,
+        },
+        () => {
+          this.loadCurrentScreenList(deployProps.start);
+        }
+      );
+    }
   }
 
   componentWillUnmount() {
@@ -93,35 +81,8 @@ class UnDeployModal extends React.Component<ModalProps, ModalState> {
     clearInterval(this.timerInterval);
   };
 
-  // 回滚数据库进度
-  getRollbackDbStatus = () => {
-    this.clearIntervals();
-    this.timerInterval = setInterval(async () => {
-      const { clusterId, deployReacord } = this.props;
-      const {
-        data: { data },
-      } = await Service.getRollbackDbStatus({
-        cluster_id: clusterId,
-        product_name: deployReacord.product_name,
-      });
-
-      if (data.rollback_status === 'success') {
-        this.setState({ currentStep: 1 });
-        this.loadCurrentScreenList(this.props.deployProps.start);
-      } else if (data.rollback_status === 'failed') {
-        this.clearIntervals();
-      }
-
-      this.setState({ 
-        rollbackDbStatu: data.rollback_status,
-        rollbackErrmsg: data.rollback_msg
-      });
-    }, 3000);
-  };
-
-  // 回滚组件进度
+  // 刷新当前页数据
   loadCurrentScreenList = (currentStart?: number) => {
-    this.clearIntervals();
     this.timerInterval = setInterval(async () => {
       const { progressType, actions, deployProps, getDataList } = this.props;
       await actions.getCurrentUnDepolyList({
@@ -146,7 +107,7 @@ class UnDeployModal extends React.Component<ModalProps, ModalState> {
           message: '提示',
           description:
             progressType === 'unDeploy' ? '卸载成功！' : '回滚成功！',
-          duration: 0,
+          duration: 5,
         });
         // 临时处理方案，更新卸载组件列表数据
         getDataList();
@@ -159,7 +120,7 @@ class UnDeployModal extends React.Component<ModalProps, ModalState> {
           message: '提示',
           description:
             progressType === 'unDeploy' ? '卸载失败！' : '回滚失败！',
-          duration: 0,
+          duration: 5,
         });
       }
     }, 3000);
@@ -358,6 +319,10 @@ class UnDeployModal extends React.Component<ModalProps, ModalState> {
                           record.id,
                           this.forceSuccessRefesh
                         );
+                    // 刷新当前start数据
+                    // this.loadCurrentScreenList();
+                    // 避免多次弹出提示框
+                    // this.props.deployProps.complete === 'undeploying' && this.loadCurrentScreenList(forceStart)
                   }}>
                   <span>
                     {isShowLog ? <Divider type="vertical" /> : null}
@@ -394,15 +359,15 @@ class UnDeployModal extends React.Component<ModalProps, ModalState> {
   };
 
   render() {
-    const {
-      visible,
-      onClose,
-      deployReacord,
-      deployProps,
-      progressType,
-    } = this.props;
-    const { title, currentStep, rollbackDbStatu, rollbackErrmsg } = this.state;
+    const { visible, onClose, deployReacord, deployProps } = this.props;
+    const { title } = this.state;
     const columns = this.initColumns();
+    // isUndeploying 控制当前分页是否继续轮询，true继续轮序，false,不在轮询
+    const isUndeploying = deployProps.complete === 'undeploying';
+    const currentStart =
+      deployProps.start - 20 > 0 ? deployProps.start - 20 : 0; // 前一satrt
+    const currentLastStart =
+      deployProps.count - 20 > 0 ? deployProps.count - 20 : 0; // 定位最后start
     return (
       <div>
         <Modal
@@ -423,51 +388,62 @@ class UnDeployModal extends React.Component<ModalProps, ModalState> {
           visible={visible}
           onCancel={onClose}>
           <div className="table-pagination_wraper">
-            {progressType === 'rollback' && (
-              <Steps current={currentStep} size="small" className="deploy-step">
-                <Steps.Step
-                  title="回滚数据库"
-                  status={roolbackObj[rollbackDbStatu]}
-                />
-                <Steps.Step title="回滚组件" />
-              </Steps>
-            )}
-            {currentStep === 0 ? (
-              <div className="deploy-database">
-                {rollbackDbStatu === 'pending' && (
-                  <div className="backuping">
-                    <Icon type="reload" spin /> 数据库回滚中，请耐心等待
-                  </div>
-                )}
-                {rollbackDbStatu === 'failed' && (
-                  <div className="failed">
-                    <span>回滚失败!</span>
-                    <div>
-                      <p>查看日志</p>
-                      <p>{rollbackErrmsg}</p>
-                    </div>
-                  </div>
-                )}
+            <Table
+              rowKey="id"
+              size="small"
+              className="border-table"
+              bordered={true}
+              columns={columns}
+              pagination={false}
+              onChange={this.handleTableChange}
+              dataSource={deployProps.unDeployList}
+            />
+            {/* 旋转loading */}
+            {deployProps.complete === 'undeploying' ? (
+              <div className="table-pagination_wraper_spin">
+                <Spin />
               </div>
-            ) : (
-              <div>
-                <Table
-                  rowKey="id"
-                  size="small"
-                  className="border-table"
-                  bordered={true}
-                  columns={columns}
-                  pagination={false}
-                  onChange={this.handleTableChange}
-                  dataSource={deployProps.unDeployList}
-                />
-                {deployProps.complete === 'undeploying' && (
-                  <div className="table-pagination_wraper_spin">
-                    <Spin />
-                  </div>
-                )}
-              </div>
-            )}
+            ) : null}
+            {deployProps.unDeployList.length > 0 ? (
+              <SpecialPagination
+                handleClickTop={() => {
+                  this.clearIntervals();
+                  this.props.actions.getCurrentUnDepolyList({
+                    deployUuid: deployProps.deploy_uuid,
+                    start: 0,
+                    limit: 20,
+                    status: this.state.status,
+                  });
+                  isUndeploying && this.loadCurrentScreenList();
+                }}
+                handleClickUp={() => {
+                  this.clearIntervals();
+                  this.props.actions.getUnDepolyList({
+                    deployUuid: deployProps.deploy_uuid,
+                    start: currentStart,
+                    limit: 20,
+                    status: this.state.status,
+                  });
+                  isUndeploying && this.loadCurrentScreenList(currentStart);
+                }}
+                handleClickDown={() => {
+                  this.clearIntervals();
+                  // this.loadLastScreen();  // 是否跳转最后一页(后端处理)
+                  this.props.actions.getUnDepolyList({
+                    deployUuid: deployProps.deploy_uuid,
+                    start: currentLastStart,
+                    limit: 20,
+                    status: this.state.status,
+                  });
+                  isUndeploying && this.loadCurrentScreenList(currentLastStart); // 刷新当前页
+                }}
+                handleClickNew={() => {
+                  this.clearIntervals();
+                  this.loadLastScreen(); // 跳转最后一页
+                  isUndeploying && this.loadCurrentScreenList(currentLastStart); // 刷新当前页
+                }}
+              />
+            ) : null}
           </div>
         </Modal>
         <Modal

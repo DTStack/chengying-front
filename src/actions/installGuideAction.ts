@@ -123,7 +123,6 @@ export const getUncheckedService = (params: any) => {
   return (dispatch: Dispatch) => {
     installGuideService.getUncheckedService(params).then((res: any) => {
       if (res.data.code === 0) {
-        console.log('我是获取未勾选的服务', res.data.data);
       }
     });
   };
@@ -154,6 +153,32 @@ export const getBaseClusterList = (params: any, callback?: Function) => {
         callback && callback(payload);
       } else {
         message.error(res.msg);
+      }
+    });
+  };
+};
+
+// 获取之前未选择的服务
+export const getUncheckedServices = (
+  params: any,
+  defaultCheckboxValue,
+  callback?: Function
+) => {
+  return (dispatch: Dispatch) => {
+    installGuideService.getUncheckedService(params).then((res: any) => {
+      if (res.data.code === 0) {
+        // 将全部服务与未选择服务做对比筛选出已选择服务
+        const unSelectService = res.data.data || [];
+        const selectService = difference(defaultCheckboxValue, unSelectService);
+        dispatch({
+          type: InstallGuideActions.SAVE_SELECTED_SEERVICE,
+          payload: selectService,
+        });
+        dispatch({
+          type: InstallGuideActions.SAVE_UNSELECTED_SEERVICE,
+          payload: unSelectService || [],
+        });
+        callback && callback();
       }
     });
   };
@@ -225,7 +250,6 @@ export const getProductPackageServices = (params: any, callback?: Function) => {
                   type: InstallGuideActions.SAVE_UNSELECTED_SEERVICE,
                   payload: unSelectService || [],
                 });
-                console.log('我是获取服务', res.data.data, selectService);
                 callback && callback();
               }
             });
@@ -263,6 +287,37 @@ export const getProductPackageList = (param: any, callback?: Function) => {
     // });
   };
 };
+
+export const getProductStepOneList = (
+  param: any,
+  status?: boolean,
+  callback?: Function
+) => {
+  return (dispatch: Dispatch) => {
+    installGuideService.getProductStepOneList(param).then((res: any) => {
+      if (res.data.code === 0) {
+        res.data.data.list.map((item) => {
+          item.isOpen = status;
+          item.list = item.children;
+          delete item.children;
+          return item;
+        });
+        dispatch({
+          type: InstallGuideActions.UPDATE_PRODUCT_PACEAGE_LIST,
+          payload: res.data.data.list,
+        });
+        callback && callback();
+      } else {
+        message.error(res.data.msg);
+      }
+    });
+    // dispatch({
+    //   type: InstallGuideActions.UPDATE_PRODUCT_PACEAGE_LIST,
+    //   payload: A.data.list
+    // });
+  };
+};
+
 export const resetInstallGuideConfig = (params?: any) => {
   return (dispatch: Dispatch) => {
     dispatch({
@@ -283,12 +338,28 @@ export const quitGuide = () => {
 
 // 第三步获取产品下的服务组信息
 // import C from "public/json/productServicesInfo";
-export const getProductServicesInfo = (params: any, callback?: Function) => {
+export const getProductServicesInfo = (
+  params: any,
+  callback?: Function,
+  forcedUpgrade?: any[]
+) => {
   return (dispatch: Dispatch) => {
     installGuideService.getProductServicesInfo(params).then((res: any) => {
       if (res.data.code === 0) {
         callback && callback(res.data.data); // tslint:disable-line
-        console.log('------侧边栏服务列表', res.data.data);
+        if (forcedUpgrade?.length > 0) {
+          let list = res.data.data;
+          for (let i of Object.values(list)) {
+            for (let values of Object.keys(i)) {
+              if (forcedUpgrade.includes(values)) {
+                dispatch({
+                  type: InstallGuideActions.SET_SMOOTH_SELECT_SERVICE,
+                  payload: i[values],
+                });
+              }
+            }
+          }
+        }
         dispatch({
           type: InstallGuideActions.UPDATE_PRODUCT_SERVICES_INFO,
           payload: res.data.data,
@@ -426,6 +497,14 @@ export const saveResourceState = (params: any) => {
     });
   };
 };
+export const saveSmoothSelected = (params: any) => {
+  return (dispatch: Dispatch) => {
+    dispatch({
+      type: InstallGuideActions.SET_SMOOTH_SELECT_SERVICE,
+      payload: params,
+    });
+  };
+};
 export const saveParamsFieldConfigState = (params: {
   key: string;
   value: string;
@@ -456,7 +535,7 @@ export const startDeploy = (params: any, callback: Function) => {
         notification.error({
           message: '提示',
           description: res.msg,
-          duration: 0,
+          duration: 5,
         });
       }
     });
@@ -481,7 +560,7 @@ export const startAutoDeploy = (params: any, callback: Function) => {
         notification.error({
           message: '提示',
           description: res.msg,
-          duration: 0,
+          duration: 5,
         });
       }
     });
@@ -757,6 +836,29 @@ export const setOldHostInfo = (params: any) => {
   };
 };
 
+// MySQL地址校验
+export const setSqlErro = (params: any) => {
+  return (dispatch: Dispatch) => {
+    installGuideService.checkMySqlAddr(params).then((res: any) => {
+      res = res.data;
+      if (res.code == 0) {
+        dispatch({
+          type: InstallGuideActions.SET_SQL_ERRO,
+          payload: res.data,
+        });
+      }
+    });
+  };
+};
+
+// 设置选中产品线
+export const setProductLine = (params: any) => {
+  return {
+    type: InstallGuideActions.SET_SELECT_PRODUCTLINE,
+    payload: params,
+  };
+};
+
 export interface InstallGuideActionTypes {
   // tslint:disable-line
   nextStep: Function;
@@ -796,5 +898,10 @@ export interface InstallGuideActionTypes {
   saveSelectNamespace: Function; // 存储第一步保存的命名空间
   saveSelectBaseCluster: Function; // 存储第二步的依赖集群
   checkDefaultImageStore: Function; // 第一步时校验默认仓库是否存在
-  setOldHostInfo: Function; //
+  setOldHostInfo: Function;
+  setSqlErro: Function;
+  saveSmoothSelected: Function;
+  getProductStepOneList: Function;
+  setProductLine: Function;
+  getUncheckedService: Function;
 }

@@ -33,7 +33,7 @@ export default class CreateCluster extends React.PureComponent<IProps, any> {
             </Col>
           </Row>
         </div>
-        <div className="cluster-type">
+        <div className="cluster-type" style={{ display: 'none' }}>
           <p className="text-title-bold">Kubernetes集群</p>
           <Row gutter={20}>
             <Col span={8}>

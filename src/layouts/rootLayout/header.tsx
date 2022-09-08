@@ -2,13 +2,15 @@ import * as React from 'react';
 import { Layout, Menu, Icon, Dropdown, message } from 'antd';
 import { HeaderStateTypes } from '@/stores/headerReducer';
 import { navData } from '@/constants/navData';
-import { userCenterService, securityService } from '@/services';
+import { userCenterService } from '@/services';
 import * as Cookie from 'js-cookie';
 import Utils from '@/utils/utils';
 import { encryptStr, encryptSM } from '@/utils/password';
 import HeaderNamespace from '@/components/headerNamespace';
 import ResetPassword from '@/pages/userCenter/components/resetPassword';
-const logoPng = require('public/imgs/logo@2x.png'); // tslint:disable-line
+import InstallGuideModal from '@/components/installGuide';
+declare var APP: any;
+const logoPng = require('public/imgs/logo_chengying@2x.png'); // tslint:disable-line
 
 const MenuItem = Menu.Item;
 const { Header } = Layout;
@@ -25,6 +27,7 @@ interface State {
   selfInfo: any;
   isCheckedResetPwd: boolean;
   showModal: boolean;
+  showInstallGuide: boolean;
 }
 
 class RootHeader extends React.Component<Props, State> {
@@ -32,6 +35,7 @@ class RootHeader extends React.Component<Props, State> {
     selfInfo: {},
     isCheckedResetPwd: false,
     showModal: false,
+    showInstallGuide: false
   };
 
   componentDidMount() {
@@ -104,8 +108,7 @@ class RootHeader extends React.Component<Props, State> {
       this.props.history.push(firstLink.url);
     } else {
       // 兼容部署向导
-      Utils.setNaviKey('', '');
-      this.props.history.push(current.url);
+      this.setState({showInstallGuide: true})
     }
   };
 
@@ -127,8 +130,22 @@ class RootHeader extends React.Component<Props, State> {
     });
   };
 
+  downloadInfo = async() => {
+    let res = await userCenterService.generate({em_version: APP.VERSION})
+    if (res.data.code == 0) {
+      window.open(
+        `/api/v2/common/deployInfo/download`,
+        '_self'
+      );
+    };
+  }
+
   getUserHelp = (e) => {
+    const { children } = e.item.props;
     const { key } = e;
+    if (children == '部署信息下载') {
+      this.downloadInfo()
+    }
     if (key === '/logout') {
       this.handleLogout();
     } else {
@@ -150,6 +167,9 @@ class RootHeader extends React.Component<Props, State> {
           authorityList.sub_menu_user_manage && (
             <MenuItem key="/usercenter/members">用户管理</MenuItem>
           )}
+        {authorityList.menu_deploy_info_markdown_download && (
+          <MenuItem key="/usercenter/members">部署信息下载</MenuItem>
+        )}
         {authorityList.menu_security_audit && (
           <MenuItem key="/usercenter/audit">安全审计</MenuItem>
         )}
@@ -196,14 +216,20 @@ class RootHeader extends React.Component<Props, State> {
     });
   };
 
+  // 关闭部署向导弹框
+  closeInstallGuideShow = () => {
+    this.setState({showInstallGuide: false})
+  }
+
   render() {
-    const { authorityList } = this.props;
-    const { selfInfo, showModal, isCheckedResetPwd } = this.state;
+    const { authorityList, history } = this.props;
+    const { selfInfo, showModal, isCheckedResetPwd, showInstallGuide } = this.state;
     const firstLevelNav = sessionStorage.getItem('firstLevelNav');
     return (
       <Header className="root-nav">
         <div className="logo dt-header-log-wrapper">
           <img src={logoPng} />
+          <span className="dt-header-logo-name">ChengYing</span>
         </div>
         <div className="nav-container">
           <div className="header-ops-namespace">
@@ -261,6 +287,11 @@ class RootHeader extends React.Component<Props, State> {
           isCheckedResetPwd={isCheckedResetPwd}
           onCancel={this.resetPwdModalShow}
           onSubmit={this.handleResetSubmit}
+        />
+        <InstallGuideModal
+          onClose={this.closeInstallGuideShow}
+          history={history}
+          visible={showInstallGuide}
         />
       </Header>
     );

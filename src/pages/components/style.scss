@@ -73,7 +73,7 @@
 // 卸载样式
 .table-pagination_wraper {
     position: relative;
-    padding-right: 0 !important;
+    padding-right: 44px;
     padding-bottom: 24px;
     min-height: 136px;
 
@@ -81,44 +81,6 @@
         position: absolute;
         left: 50%;
         bottom: -15px;
-    }
-
-    .deploy-database {
-        text-align: center;
-        color: #333333;
-        .backuping {
-            padding-top: 20px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            .anticon-reload {
-                color: #3F87FF;
-                font-size: 18px;
-                margin-right: 10px;
-            }
-        }
-        .failed {
-            & > span {
-                display: block;
-                text-align: center;
-                margin-bottom: 20px;
-            }
-            & > div {
-                border: 1px solid #DDDDDD;
-                font-size: 12px;
-                text-align: left;
-                & > p:first-child {
-                    padding: 10px 20px;
-                    background: #FAFAFA;
-                    font-weight: 500;
-                    line-height: 20px;
-                }
-                & > p:last-child {
-                    padding: 12px 20px;
-                    line-height: 17px;
-                }
-            }
-        }
     }
 }
 
@@ -230,35 +192,34 @@
 .product-modal {
     .ant-modal-body {
         padding: 0 0 8px;
-        .backuping {
-            color: #3F87FF;
-        }
-        .flex {
-            display: flex;
-            align-items: center;
-            .ant-btn {
-                margin-right: 20px;
-            }
+        .modeTips{
+            font-size: 12px;
+            color: #999999;
+            margin-top: -5px;
         }
         .tips {
+            display: inline-block;
+            margin-left: 20px;
+            .backuping {
+                color: #3F87FF;
+            }
             .backupsuccess {
-                color: #13BC69;
                 span {
-                    margin-left: 20px;
-                    color: #999;
-                }
+                    color: #13BC69;
+                    &:last-child {
+                        margin-left: 20px;
+                        color: #999;
+                    }
+                } 
             }
             .backupfail {
-                color: #E02020;
+                span {
+                    color: #E02020;   
+                } 
                 a {
                     margin-left: 20px;
-                    color: #3F87FF;
                 } 
             }
         }
     }
-}
-.deploy-step {
-    width: 300px;
-    margin: 0 auto 20px;
 }

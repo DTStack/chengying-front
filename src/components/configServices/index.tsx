@@ -42,6 +42,7 @@ interface Prop {
   repeatParams: any[]; /// 输入值重复的总输入框
   changeHosts: Function; // 修改删除为一行事没有未关联主机提示
   getProductServicesInfo: Function;
+  DeployProp: any;
 }
 
 interface State {
@@ -64,6 +65,10 @@ interface State {
   configFile: string;
   selectedConfigFile: string; // 配置文件
   encryptInfo: any;
+  isRerro: boolean;
+  isLerro: boolean;
+  smoothTarget: any[];
+  isChange: boolean;
 }
 
 class ConfigServices extends React.Component<Prop, State> {
@@ -87,6 +92,10 @@ class ConfigServices extends React.Component<Prop, State> {
     configFile: '',
     selectedConfigFile: '',
     encryptInfo: {},
+    isRerro: false,
+    isLerro: false,
+    smoothTarget: [],
+    isChange: false,
   };
 
   componentDidMount() {
@@ -96,10 +105,16 @@ class ConfigServices extends React.Component<Prop, State> {
     this.computeTransferIpList();
     this.getPublicKey();
     this.getConfigFile();
+    this.initErro();
   }
 
   componentDidUpdate(prevProps, prevState) {
-    if (!isEqual(this.props.serviceData.serviceKey, prevProps.serviceData.serviceKey)) {
+    if (
+      !isEqual(
+        this.props.serviceData.serviceKey,
+        prevProps.serviceData.serviceKey
+      ) || this.state.isChange
+    ) {
       const Instate = this.state.serviceInfo.Instance;
       this.setState(
         {
@@ -112,6 +127,8 @@ class ConfigServices extends React.Component<Prop, State> {
         () => {
           this.computeTransferIpList();
           this.getConfigFile();
+          this.initErro();
+          this.setState({isChange: false})
         }
       );
     }
@@ -165,13 +182,13 @@ class ConfigServices extends React.Component<Prop, State> {
   getConfigFile = () => {
     const {
       pname,
-      selectedProduct: { ProductVersion },
+      selectedProduct: { product_version },
       sname,
     } = this.props;
     servicePageService
       .getParamDropList({
         productName: pname,
-        productVersion: ProductVersion,
+        productVersion: product_version,
         serviceName: sname,
       })
       .then((res) => {
@@ -201,7 +218,6 @@ class ConfigServices extends React.Component<Prop, State> {
     }
   };
 
-  
   handleResourceSubmit = (e: any) => {
     this.setState({
       isCommitHost: true,
@@ -324,25 +340,57 @@ class ConfigServices extends React.Component<Prop, State> {
 
   computeTransferIpList = () => {
     const { ServiceAddr = {} } = this.props.serviceData;
+    const { upgradeType, isFirstSmooth } = this.props.DeployProp;
     const filterRepeat: any = [];
     const result: any = [];
     const hostL = this.props.hostList;
-    hostL.forEach((o: any) => {
-      if (filterRepeat.indexOf(o.ip) === -1 && o.ip) {
-        result.push({
-          id: o.ip,
-          ip: o.ip,
-          key: o.ip,
-        });
-        filterRepeat.push(o.ip);
-      }
-    });
+    if (upgradeType !== 'smooth') {
+      hostL.forEach((o: any) => {
+        if (filterRepeat.indexOf(o.ip) === -1 && o.ip) {
+          result.push({
+            id: o.ip,
+            ip: o.ip,
+            key: o.ip,
+          });
+          filterRepeat.push(o.ip);
+        }
+      });
+    }
     if (
       !this.props.serviceData.Instance ||
       !this.props.serviceData.Instance.UseCloud
     ) {
       const selected = ServiceAddr.Select ? ServiceAddr.Select : [];
+      selected.map((item) => {
+        if (ServiceAddr?.IP) {
+          if (ServiceAddr?.IP.includes(item.IP)) {
+            item.disabled = true;
+          }
+        }
+        return item;
+      });
       const unSelected = ServiceAddr.UnSelect ? ServiceAddr.UnSelect : [];
+      unSelected.map((item) => {
+        item.disabled = false;
+        return item;
+      });
+      if (upgradeType === 'smooth') {
+        const allHostsList = [...selected, ...unSelected];
+        allHostsList.forEach((o: any) => {
+          result.push({
+            id: o.IP,
+            ip: o.IP,
+            key: o.IP,
+            disabled: !isFirstSmooth ? o.disabled : false,
+          });
+        });
+        this.setState({
+          currentHosts: result,
+          selectHost: selected[0]?.IP,
+          smoothTarget: [...selected].map((item) => item.IP),
+        });
+        return result;
+      }
       const allHosts = [...selected, ...unSelected].map((item) => item.IP);
       allHosts.forEach((o: any) => {
         if (filterRepeat.indexOf(o) === -1 && o) {
@@ -391,14 +439,43 @@ class ConfigServices extends React.Component<Prop, State> {
 
   // 却换tabs
   changeTabs = (e: any) => {
+    this.initErro();
     this.setState({ activeTabpane: e });
+    if (e == 'param') {
+      this.getHostsList()
+      this.setState({ isChange: true })
+    } else {
+      this.setState({ isChange: false })
+    }
+  };
+
+  // 判断初始状态值
+  initErro = () => {
+    const { selectedService } = this.props.installGuideProp;
+    const { ServiceAddr } = selectedService;
+    const { forcedUpgrade, isFirstSmooth } = this.props.DeployProp;
+    // 是否属于可平滑升级的组件
+    if (forcedUpgrade.includes(selectedService.serviceKey) && isFirstSmooth) {
+      if (!ServiceAddr.UnSelect) {
+        this.setState({ isLerro: true });
+      } else {
+        this.setState({ isLerro: false });
+      }
+      if (!ServiceAddr.Select) {
+        this.setState({ isRerro: true });
+      } else {
+        this.setState({ isRerro: false });
+      }
+    } else {
+      this.setState({ isLerro: false, isRerro: false });
+    }
   };
 
   // 获取diff config
   getConfDiff = () => {
     const {
       pname,
-      selectedProduct: { ProductVersion },
+      selectedProduct: { product_version },
       sname,
     } = this.props;
     const { selectHost, configFile } = this.state;
@@ -406,7 +483,7 @@ class ConfigServices extends React.Component<Prop, State> {
       file: configFile || '',
       ip: selectHost || '',
       product_name: pname,
-      product_version: ProductVersion,
+      product_version: product_version,
       service_name: sname,
     };
     servicePageService.getConfDiff(param).then((res: any) => {
@@ -497,14 +574,14 @@ class ConfigServices extends React.Component<Prop, State> {
   getCurrentFileConf = (file) => {
     const {
       clusterId,
-      selectedProduct: { ProductVersion },
+      selectedProduct: { product_version },
     } = this.props.installGuideProp;
     const { pname, sname } = this.props;
     installGuideService
       .getServiceGroupFile(
         {
           productName: pname,
-          productVersion: ProductVersion,
+          productVersion: product_version,
         },
         {
           servicename: sname,
@@ -627,6 +704,9 @@ class ConfigServices extends React.Component<Prop, State> {
       configFileList,
       encryptInfo,
       selectedConfigFile,
+      isRerro,
+      isLerro,
+      smoothTarget,
     } = this.state;
     // const visibleTabResource = !this.props.isKubernetes || (this.props.isKubernetes && !this.props.serviceData.Instance);
     const visibleTabResource = true;
@@ -659,7 +739,6 @@ class ConfigServices extends React.Component<Prop, State> {
         </ul>
       </div>
     );
-    console.log(this.state.serviceInfo.Config, 'selectHost');
     return (
       <div className="COMP_CONFIG_SERVICE" style={{ position: 'relative' }}>
         <Prompt message="" />
@@ -696,8 +775,12 @@ class ConfigServices extends React.Component<Prop, State> {
                 selectedProduct={this.props.selectedProduct}
                 Instance={this.state.Instate}
                 installGuideProp={this.props.installGuideProp}
+                DeployProp={this.props.DeployProp}
                 actions={this.props.actions}
+                smoothTarget={smoothTarget}
                 isKubernetes={this.props.isKubernetes}
+                is_Lerro={isLerro}
+                is_Rerro={isRerro}
               />
             </TabPane>
           )}

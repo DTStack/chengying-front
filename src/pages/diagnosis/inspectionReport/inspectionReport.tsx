@@ -175,7 +175,7 @@ function inspectionReport(props) {
           moduleName: moduleArr.includes(cur.module) ? '' : cur.module,
           moduleType:
             (pre.module === 'System' || cur.module === 'System') &&
-            pre.module !== cur.module
+              pre.module !== cur.module
               ? cur.module
               : '',
         };

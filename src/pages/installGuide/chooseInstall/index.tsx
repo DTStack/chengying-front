@@ -114,7 +114,7 @@ export default class ChooseInstall extends React.PureComponent<IProps, IState> {
         )}
         {!loading ? (
           <Row gutter={20}>
-            <Col span={8}>
+            {/* <Col span={8}>
               <ChoiceCard
                 className="cluster-box-style"
                 title="Kubernetes部署模式"
@@ -122,7 +122,7 @@ export default class ChooseInstall extends React.PureComponent<IProps, IState> {
                 imgSrc={require('public/imgs/install_kubernetes.png')}
                 handleTypeClick={this.handleTypeClick.bind(this, 'kubernetes')}
               />
-            </Col>
+            </Col> */}
             <Col span={8}>
               <ChoiceCard
                 className="cluster-box-style"

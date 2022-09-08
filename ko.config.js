@@ -3,8 +3,10 @@ const webpack = require("webpack");
 const CopyWebpackPlugin = require('copy-webpack-plugin');
 const TerserPlugin = require('terser-webpack-plugin');
 const MonacoWebpackPlugin = require('monaco-editor-webpack-plugin');
+const ReactRefreshPlugin = require('@pmmmwh/react-refresh-webpack-plugin');
+const FigletConsoleWebpackPlugin = require('figlet-console-webpack-plugin');
 const MonacoConfig = require('./monacoConfig');
-const VERSION = JSON.stringify(require("./package.json").version); // app version.
+const packageInfo = require("./package.json"); // app version.
 
 const isProd = process.env.NODE_ENV === "production";
 
@@ -25,6 +27,7 @@ module.exports = {
             loader: "babel-loader",
             options: {
               cacheDirectory: true,
+              plugins: !isProd ? ["react-refresh/babel"] : []
             },
           },
           {
@@ -57,9 +60,19 @@ module.exports = {
       ],
     }),
 
+    new ReactRefreshPlugin(),
+
     new webpack.DefinePlugin({
       APP: {
-        VERSION: VERSION
+        VERSION: JSON.stringify(packageInfo.version)
+      }
+    }),
+
+    new FigletConsoleWebpackPlugin({
+      name: "ChengYing",
+      content: `App current version: ${packageInfo.version}`,
+      options: {
+        markMaxLength: 86
       }
     }),
   ],
@@ -91,11 +104,6 @@ module.exports = {
       module: "empty",
       path: false,
       events: false,
-      os: require.resolve('os-browserify/browser'),
-      crypto: require.resolve('crypto-browserify'),
-      stream: require.resolve('stream-browserify'),
-      "@": path.resolve(__dirname, './src'),
-      "public": path.resolve(__dirname, './public'),
     },
   },
 
@@ -107,13 +115,17 @@ module.exports = {
     host: '0.0.0.0',
     port: 8099,
     open: false,
-    stats: {
-      children: true
+    client: {
+      logging: "info",
+      overlay: {
+        errors: false,
+        warnings: false,
+      },
+      progress: true,
     },
     proxy: [
       {
         path: '/api/v2/cluster/showShellLog',
-        // target: 'ws://172.16.8.200', // v4.3.2 environment of test
         target: 'ws://172.16.82.176',
         ws: true,
       },
@@ -123,7 +135,6 @@ module.exports = {
           '/gate/**',
         ],
         // target: 'http://172.16.10.191', // 测试环境
-        // target: 'http://172.16.8.200', // v4.3.2 environment of test
         target: 'http://172.16.82.176', // 开发环境          
       }
     ]

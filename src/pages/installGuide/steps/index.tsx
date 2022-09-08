@@ -58,6 +58,8 @@ interface StepIndexState {
   autoExpendRowKeys: string[];
   autoSelectedProducts: any[];
   deployUUID: string;
+  upgradeStep: number;
+  isUpgrade: boolean;
 }
 
 const parser = (url: string): any => {
@@ -89,6 +91,8 @@ class StepIndex extends React.Component<StepIndexProp, StepIndexState> {
     autoExpendRowKeys: [],
     autoSelectedProducts: [],
     deployUUID: '',
+    upgradeStep: 0,
+    isUpgrade: false,
   };
 
   private stepTwoForm: any = null;
@@ -130,12 +134,12 @@ class StepIndex extends React.Component<StepIndexProp, StepIndexState> {
       urlParams;
     // 升级下，产品包选择有变更，不允许下一步
     if (new_version && step === 1 && Object.keys(selectedProduct).length) {
-      const selectedPID = selectedProduct?.ID;
+      const selectedPID = selectedProduct?.id;
       // 判断产品包是否一致
       const productCheck =
         `${selectedPID}` === id &&
-        selectedProduct?.ProductName === product_name &&
-        selectedProduct?.ProductVersion === product_version;
+        selectedProduct?.product_name === product_name &&
+        selectedProduct?.product_name === product_version;
       // 判断集群是否一致
       const clusterCheck =
         `${clusterId}` === redeploy &&
@@ -181,7 +185,6 @@ class StepIndex extends React.Component<StepIndexProp, StepIndexState> {
             return {
               ID: product.pid,
               productName: product.product_name,
-              // productVersion: record.ProductVersion,
               service: {
                 all: sortedData,
                 checked,
@@ -260,7 +263,6 @@ class StepIndex extends React.Component<StepIndexProp, StepIndexState> {
     const installType = type || 'hosts';
     this.props.actions.initInstallGuide();
     this.props.actions.saveInstallType(installType);
-
     if (query_str && query_str.length > 0) {
       if (installType === 'kubernetes') {
         this.props.actions.saveSelectCluster(Number(cluster_id));
@@ -268,9 +270,9 @@ class StepIndex extends React.Component<StepIndexProp, StepIndexState> {
       }
       // 第四种情况只需要名字和版本即可
       this.props.actions.saveInstallInfo({
-        ProductName: product_name,
-        ProductVersion: product_version,
-        ID: id,
+        product_name: product_name,
+        product_version: product_version,
+        id: id,
       });
       this.props.actions.setDeployUUID(query_str);
       this.props.actions.goToStep(3);
@@ -293,15 +295,26 @@ class StepIndex extends React.Component<StepIndexProp, StepIndexState> {
         // 设置为第二步
         // 如果是升级，直接设为第三步
         if (new_version) {
-          this.goToStepThree();
+          this.setState({ isUpgrade: true }, () => {
+            this.goToStepThree();
+          });
           return;
         }
         this.props.actions.goToStep(1);
         // 获取第二步的产品包列表
-        this.props.actions.getProductPackageList({
-          limit: 0,
-          product_type: installType === 'hosts' ? 0 : 1,
-        });
+        this.props.actions.getProductStepOneList(
+          {
+            product_line_name: '',
+            product_line_version: '',
+            product_type: installType === 'hosts' ? 0 : 1,
+            deploy_status: '',
+          },
+          false
+        );
+      } else {
+        sessionStorage.removeItem('upgradeType');
+        sessionStorage.removeItem('forcedUpgrade');
+        sessionStorage.removeItem('isFirstSmooth');
       }
     }
   };
@@ -330,7 +343,17 @@ class StepIndex extends React.Component<StepIndexProp, StepIndexState> {
         product_version === o.ProductVersion &&
         id === o.ID.toString()
       ) {
-        this.handleProductSelected(o);
+        this.handleProductSelected({
+          product_name: o.ProductName,
+          product_version: o.ProductVersion,
+          id: o.ID,
+          status: o.Status,
+          product_type: o.ProductType,
+          namespace: o.Namespace,
+          parent_product_name: o.ParentProductName,
+          product_name_display: o.ProductNameDisplay,
+          deploy_uuid: o.DeployUUID,
+        });
       }
     });
   };
@@ -349,9 +372,11 @@ class StepIndex extends React.Component<StepIndexProp, StepIndexState> {
   ) => {
     this.props.actions.getProductPackageServices(
       {
-        productName: selectedProduct.ProductName,
-        productVersion: selectedProduct.ProductVersion,
-        pid: selectedProduct.ID,
+        productName:
+          selectedProduct.product_name ?? selectedProduct.ProductName,
+        productVersion:
+          selectedProduct.product_version ?? selectedProduct.ProductVersion,
+        pid: selectedProduct.id ?? selectedProduct.ID,
         clusterId: this.props.installGuideProp.clusterId,
         baseClusterId: baseClusterId,
       },
@@ -366,7 +391,7 @@ class StepIndex extends React.Component<StepIndexProp, StepIndexState> {
 
   // 获取服务组信息
   getProductServicesInfo = () => {
-    const { deployMode } = this.state;
+    const { deployMode, urlParams } = this.state;
     if (deployMode === EnumDeployMode.AUTO) return;
     const {
       baseClusterId,
@@ -375,18 +400,23 @@ class StepIndex extends React.Component<StepIndexProp, StepIndexState> {
       namespace,
       clusterId,
     } = this.props.installGuideProp;
+    const { upgradeType, forcedUpgrade } = this.props.deployProp;
     // 产品包确认后，获取第三步左侧选择栏的数据（产品下的服务组信息）
-    if (!selectedProduct.ProductName || !selectedProduct.ProductVersion) {
+    if (!selectedProduct.product_name || !selectedProduct.product_version) {
       return;
     }
-    this.props.actions.getProductServicesInfo({
-      productName: selectedProduct.ProductName,
-      productVersion: selectedProduct.ProductVersion,
+    let params = {
+      productName: selectedProduct.product_name,
+      productVersion: selectedProduct.product_version,
       unSelectService: unSelectedServiceList,
       relynamespace: baseClusterId === -1 ? undefined : baseClusterId,
       namespace,
       clusterId,
-    });
+    };
+    if (upgradeType === 'smooth') {
+      Object.assign(params, { upgrade_mode: 'smooth' });
+    }
+    this.props.actions.getProductServicesInfo(params, null, forcedUpgrade);
   };
 
   // componentWillReceiveProps(n: StepIndexProp) { }
@@ -444,7 +474,7 @@ class StepIndex extends React.Component<StepIndexProp, StepIndexState> {
     return validateStatus;
   };
 
-  handleNextStep = () => {
+  handleNextStep = async () => {
     const {
       step,
       installType,
@@ -455,8 +485,11 @@ class StepIndex extends React.Component<StepIndexProp, StepIndexState> {
       baseClusterId,
       deployState,
       runtimeState,
+      smoothSelectService,
     } = this.props.installGuideProp;
-    const { autoSelectedProducts, deployMode, urlParams } = this.state;
+    const { upgradeType } = this.props.deployProp;
+    const { autoSelectedProducts, deployMode, upgradeStep, isUpgrade } =
+      this.state;
     // 选择集群的校验处理
     if (step === 0) {
       return this.stepTwoForm.props.form.validateFields(
@@ -510,9 +543,51 @@ class StepIndex extends React.Component<StepIndexProp, StepIndexState> {
       const validate = this.productPackageValidator();
       if (!validate.status) return message.error(validate.message);
       if (deployMode === EnumDeployMode.MANUAL) {
+        const res = await installGuideService.deployCondition({
+          cluster_id: this.props.installGuideProp.clusterId,
+          auto_deploy: false,
+          product_name:
+            this.props.installGuideProp.selectedProduct.product_name,
+          product_type: installType === 'hosts' ? 0 : 1,
+        });
+        if (res.data.code !== 0) {
+          if (res.data.msg.indexOf('存在平滑升级版本') !== -1) {
+            Modal.error({
+              title: '提示',
+              content: res.data.msg,
+            });
+            return;
+          }
+          message.error(res.data.msg);
+          return;
+        }
         this.getProductServicesInfo();
       } else if (deployMode === EnumDeployMode.AUTO) {
+        const res = await installGuideService.deployCondition({
+          cluster_id: this.props.installGuideProp.clusterId,
+          auto_deploy: true,
+          product_line_name:
+            this.props.installGuideProp.selectProductLine?.product_line_name,
+          product_line_version:
+            this.props.installGuideProp.selectProductLine?.product_line_version,
+          product_type: installType === 'hosts' ? 0 : 1,
+        });
+        if (res.data.code !== 0) {
+          if (res.data.msg.indexOf('存在平滑升级版本') !== -1) {
+            Modal.error({
+              title: '提示',
+              content: res.data.msg,
+            });
+            return;
+          }
+          message.error(res.data.msg);
+          return;
+        }
         const params = {
+          product_line_name:
+            this.props.installGuideProp.selectProductLine?.product_line_name,
+          product_line_version:
+            this.props.installGuideProp.selectProductLine?.product_line_version,
           cluster_id: this.props.installGuideProp.clusterId,
           product_info: autoSelectedProducts.map((item) => {
             return {
@@ -528,7 +603,7 @@ class StepIndex extends React.Component<StepIndexProp, StepIndexState> {
         });
         return;
       }
-    } else if (step === 2) {
+    } else if (step === 2 || (upgradeStep === 0 && isUpgrade)) {
       const { userCenterProp } = this.props;
       const { authorityList } = userCenterProp;
       // 权限校验
@@ -537,13 +612,17 @@ class StepIndex extends React.Component<StepIndexProp, StepIndexState> {
         return message.error('权限不足，请联系管理员！');
       }
       // 判断是否产品包升级
-      if (!!urlParams.new_version) {
+      if (isUpgrade) {
         // 产品包升级信息
         this.saveUpgrade();
       }
       if (deployMode === EnumDeployMode.AUTO) {
         // 调用自动部署的接口
         const params = {
+          product_line_name:
+            this.props.installGuideProp.selectProductLine?.product_line_name,
+          product_line_version:
+            this.props.installGuideProp.selectProductLine?.product_line_version,
           cluster_id: this.props.installGuideProp.clusterId,
           product_info: autoSelectedProducts.map((item) => {
             return {
@@ -561,23 +640,45 @@ class StepIndex extends React.Component<StepIndexProp, StepIndexState> {
           this.props.actions.nextStep();
         });
       } else {
+        let info = JSON.parse(sessionStorage.getItem('product_backup_info'));
         let params: any = {
-          productName: selectedProduct.ProductName,
-          version: selectedProduct.ProductVersion,
+          productName: selectedProduct.product_name,
+          version: selectedProduct.product_version,
           unchecked_services: unSelectedServiceList,
           deployMode: this.state.urlParams.new_version ? 1 : undefined,
           clusterId: this.props.installGuideProp.clusterId,
         };
+        if (upgradeType === 'smooth') {
+          let final_upgrade = false;
+          if (smoothSelectService?.ServiceAddr) {
+            if (smoothSelectService?.ServiceAddr?.UnSelect) {
+              final_upgrade = false;
+            } else {
+              final_upgrade = true;
+            }
+          }
+          Object.assign(params, {
+            deployMode: 3,
+            source_version: info?.source_version,
+            final_upgrade: final_upgrade,
+          });
+        }
         if (installType === 'kubernetes') {
           params = Object.assign({}, params, {
             namespace: namespace,
             relynamespace: baseClusterId === -1 ? undefined : baseClusterId,
             clusterId: clusterId,
-            pid: selectedProduct.ID,
+            pid: selectedProduct.id,
           });
         }
-
-        this.props.actions.startDeploy(params, this.props.actions.nextStep);
+        this.props.actions.startDeploy(
+          params,
+          !isUpgrade
+            ? this.props.actions.nextStep
+            : () => {
+                this.setState({ upgradeStep: 1 });
+              }
+        );
       }
       return;
     }
@@ -587,8 +688,12 @@ class StepIndex extends React.Component<StepIndexProp, StepIndexState> {
   handleQuit = () => {
     // this.props.actions.quitGuide();
     const { deployState, runtimeState } = this.props.installGuideProp;
+    const { upgradeStep, isUpgrade } = this.state;
     if (!alertModal(runtimeState, deployState)) return;
-    if (this.props.installGuideProp.step !== 3) {
+    if (
+      (this.props.installGuideProp.step !== 3 && !isUpgrade) ||
+      (isUpgrade && upgradeStep === 0)
+    ) {
       Modal.confirm({
         title: '退出会失去已改动的内容，确认退出吗?',
         icon: <Icon type="exclamation-circle" theme="filled" />,
@@ -649,18 +754,24 @@ class StepIndex extends React.Component<StepIndexProp, StepIndexState> {
    */
   saveUpgrade = async () => {
     const { selectedProduct = {}, oldHostInfo } = this.props.installGuideProp;
+    const { upgradeType } = this.props.deployProp;
+    let extra = {};
+    if (upgradeType === 'smooth') {
+      Object.assign(extra, { upgrade_mode: 'smooth' });
+    }
     const backUpInfo =
       JSON.parse(sessionStorage.getItem('product_backup_info')) || {};
     const { data } = await installGuideService.saveUpgrade(
       {
-        productName: selectedProduct.ProductName,
+        productName: selectedProduct.product_name,
       },
       {
         ...backUpInfo,
         ...oldHostInfo,
+        ...extra,
       }
     );
-    sessionStorage.removeItem('product_backup_info');
+    // this.setState({upgradeStep: 1})
     if (data.code === 0 && data.data?.upgrade_id) {
       return true;
     }
@@ -691,12 +802,22 @@ class StepIndex extends React.Component<StepIndexProp, StepIndexState> {
             deploy_uuid: deploy_uuid || this.props.installGuideProp.deployUUID,
           });
         } else {
+          const { upgradeType } = this.props.deployProp;
+          let deploy_mode = 0;
+          if (this.state.isUpgrade) {
+            if (upgradeType === 'smooth') {
+              deploy_mode = 3;
+            } else {
+              deploy_mode = 1;
+            }
+          }
           // 停止部署成功之后继续发请求直至后端响应结束
           const isKubernetes = installType === 'kubernetes';
           let params = {
-            productName: selectedProduct.ProductName,
-            version: selectedProduct.ProductVersion,
-            product_type: selectedProduct.ProductType,
+            productName: selectedProduct.product_name,
+            version: selectedProduct.product_version,
+            product_type: selectedProduct.product_type,
+            deploy_mode,
           };
           if (isKubernetes) {
             params = Object.assign(params, {
@@ -722,16 +843,16 @@ class StepIndex extends React.Component<StepIndexProp, StepIndexState> {
         actions.setCurrentParentCluster(currentCluster);
       }
     }
-    utils.setNaviKey('sub_menu_product_deploy', 'sub_menu_cluster_list');
+    utils.setNaviKey('menu_deploy_center', 'sub_menu_product_deploy');
     this.props.history.push(
       this.state.gobackLocation === '/login'
         ? '/'
-        : '/deploycenter/cluster/detail/deployed'
+        : '/deploycenter/appmanage/installs'
     );
   };
 
   render() {
-    const { canUpgrade, urlParams } = this.state;
+    const { canUpgrade, urlParams, isUpgrade, upgradeStep } = this.state;
     const { step, complete, stopDeployBySelf, baseClusterInfo, installType } =
       this.props.installGuideProp;
     const { baseClusterList, hasDepends } = baseClusterInfo || {};
@@ -744,12 +865,13 @@ class StepIndex extends React.Component<StepIndexProp, StepIndexState> {
       hasDepends &&
       !baseClusterList.length;
     // 当前是否是升级
-    const isUpgrade = currentStep === 1 && !!urlParams.new_version;
+    // const isUpgrade = currentStep === 1 && !!urlParams.new_version;
     const P = {
       installGuideProp: this.props.installGuideProp,
       actions: this.props.actions,
       location: this.props.location,
       defaultSelectedProduct: urlParams,
+      DeployProp: this.props.deployProp,
       isKubernetes,
     };
     // console.log(this.props.installGuideProp, 'currentStep')
@@ -758,76 +880,98 @@ class StepIndex extends React.Component<StepIndexProp, StepIndexState> {
         className="step-container"
         style={{ height: document.body.clientHeight - 50 }}>
         <div className="step-main-container">
-          <div className="na-page-content-box">
-            <Steps current={currentStep}>
-              <Step title="选择集群" />
-              <Step title="选择产品包" />
-              <Step title="配置服务" />
-              <Step title="执行部署" />
-            </Steps>
-            <div className="step-triangle-box">
-              <div
-                className={
-                  currentStep === 0
-                    ? 'step-triangle-item'
-                    : 'step-triangle-item not-active-step'
-                }></div>
-              <div
-                className={
-                  currentStep === 1
-                    ? 'step-triangle-item'
-                    : 'step-triangle-item not-active-step'
-                }></div>
-              <div
-                className={
-                  currentStep === 2
-                    ? 'step-triangle-item'
-                    : 'step-triangle-item not-active-step'
-                }></div>
-              <div
-                className={
-                  currentStep === 3
-                    ? 'step-triangle-item'
-                    : 'step-triangle-item not-active-step'
-                }></div>
-            </div>
-            {
-              // 这里流程对调一下，把选择集群放在第一步
-              (currentStep === 0 && (
-                <StepTwo
-                  wrappedComponentRef={(form) => (this.stepTwoForm = form)}
-                  {...P}
-                />
-              )) ||
-                (currentStep === 1 && (
+          {!isUpgrade && (
+            <div className="na-page-content-box">
+              <Steps current={currentStep}>
+                <Step title="选择集群" />
+                <Step title="选择产品包" />
+                <Step title="配置服务" />
+                <Step title="执行部署" />
+              </Steps>
+              <div className="step-triangle-box">
+                <div
+                  className={
+                    currentStep === 0
+                      ? 'step-triangle-item'
+                      : 'step-triangle-item not-active-step'
+                  }></div>
+                <div
+                  className={
+                    currentStep === 1
+                      ? 'step-triangle-item'
+                      : 'step-triangle-item not-active-step'
+                  }></div>
+                <div
+                  className={
+                    currentStep === 2
+                      ? 'step-triangle-item'
+                      : 'step-triangle-item not-active-step'
+                  }></div>
+                <div
+                  className={
+                    currentStep === 3
+                      ? 'step-triangle-item'
+                      : 'step-triangle-item not-active-step'
+                  }></div>
+              </div>
+              {
+                // 这里流程对调一下，把选择集群放在第一步
+                (currentStep === 0 && (
                   <StepOne
-                    autoProductList={this.state.autoProductList}
-                    deployMode={this.state.deployMode}
-                    autoSelectedProducts={this.state.autoSelectedProducts}
-                    updateAutoDeployService={this.updateAutoDeployService}
-                    getOrchestrationHistory={this.getOrchestrationHistory}
-                    updateParentState={this.setState.bind(this)}
-                    isK8s={
-                      this.props.installGuideProp.installType === 'kubernetes'
-                    }
+                    wrappedComponentRef={(form) => (this.stepTwoForm = form)}
                     {...P}
                   />
                 )) ||
-                (currentStep === 2 && (
+                  (currentStep === 1 && (
+                    <StepTwo
+                      autoProductList={this.state.autoProductList}
+                      deployMode={this.state.deployMode}
+                      autoSelectedProducts={this.state.autoSelectedProducts}
+                      updateAutoDeployService={this.updateAutoDeployService}
+                      getOrchestrationHistory={this.getOrchestrationHistory}
+                      updateParentState={this.setState.bind(this)}
+                      isK8s={
+                        this.props.installGuideProp.installType === 'kubernetes'
+                      }
+                      {...P}
+                    />
+                  )) ||
+                  (currentStep === 2 && (
+                    <StepThree
+                      productName={urlParams.product_name}
+                      deployMode={this.state.deployMode}
+                      refreshDeployService={this.refreshDeployService}
+                      {...P}
+                    />
+                  )) ||
+                  (currentStep === 3 && <StepFour {...P} />)
+              }
+            </div>
+          )}
+          {isUpgrade && (
+            <div className="na-page-content-box">
+              <Steps current={upgradeStep} style={{ width: 300 }}>
+                <Step title="配置服务" />
+                <Step title="执行部署" />
+              </Steps>
+              <div className="step-triangle-box" style={{ width: '100%' }}>
+                {(upgradeStep === 0 && (
                   <StepThree
+                    productName={urlParams.product_name}
                     deployMode={this.state.deployMode}
                     refreshDeployService={this.refreshDeployService}
                     {...P}
                   />
                 )) ||
-                (currentStep === 3 && <StepFour {...P} />)
-            }
-          </div>
+                  (upgradeStep === 1 && <StepFour {...P} />)}
+              </div>
+            </div>
+          )}
           <div className="btn-container">
             <Button className="dt-em-btn" onClick={this.handleQuit}>
               退出
             </Button>
-            {currentStep === 3 ? (
+            {currentStep === 3 || upgradeStep === 1 ? (
               <span>
                 <Button
                   ghost
@@ -845,16 +989,13 @@ class StepIndex extends React.Component<StepIndexProp, StepIndexState> {
                   disabled={complete !== 'deployed' && !stopDeployBySelf}
                   className="dt-em-btn"
                   type="primary">
-                  完成
+                  继续部署
                 </Button>
               </span>
             ) : (
               <span>
-                {currentStep !== 0 && (
-                  <Button
-                    className="dt-em-btn"
-                    disabled={isUpgrade}
-                    onClick={this.handleLastStep}>
+                {currentStep !== 0 && !isUpgrade && (
+                  <Button className="dt-em-btn" onClick={this.handleLastStep}>
                     上一步
                   </Button>
                 )}
@@ -863,7 +1004,7 @@ class StepIndex extends React.Component<StepIndexProp, StepIndexState> {
                   type="primary"
                   disabled={cannotK8sNext || !canUpgrade}
                   onClick={this.handleNextStep}>
-                  {currentStep !== 2 ? '下一步' : '执行部署'}
+                  {currentStep !== 2 && !isUpgrade ? '下一步' : '执行部署'}
                 </Button>
               </span>
             )}

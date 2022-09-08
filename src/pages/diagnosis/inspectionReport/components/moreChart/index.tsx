@@ -16,6 +16,7 @@ export default function index(props: Prop) {
   const [option, setOption] = React.useState<any>({});
   const [chartData, setChartData] = React.useState<any>({});
   const [dataLoading, setDataLoading] = React.useState(false);
+
   const getChartData = async (params: any) => {
     setDataLoading(true);
     const { targets, decimal, unit, metric } = params;
@@ -44,6 +45,8 @@ export default function index(props: Prop) {
     }
     setDataLoading(false);
   };
+
+  
   const handleOption = (data: any, clickIndex?: number) => {
     const option = {
       grid: {
@@ -63,6 +66,12 @@ export default function index(props: Prop) {
           fontSize: 14,
           fontWeight: 400,
         },
+      },
+      legend: {
+        top: "87%",
+        left: "6%",
+        itemWidth: 23,
+        itemHeight: 5
       },
       xAxis: {
         type: 'category',

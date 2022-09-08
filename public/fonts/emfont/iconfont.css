@@ -1,8 +1,8 @@
 @font-face {
   font-family: "emicon"; /* Project id 925135 */
-  src: url('iconfont.woff2?t=1646712363638') format('woff2'),
-       url('iconfont.woff?t=1646712363638') format('woff'),
-       url('iconfont.ttf?t=1646712363638') format('truetype');
+  src: url('iconfont.woff2?t=1652773865170') format('woff2'),
+       url('iconfont.woff?t=1652773865170') format('woff'),
+       url('iconfont.ttf?t=1652773865170') format('truetype');
 }
 
 .emicon {
@@ -11,6 +11,46 @@
   font-style: normal;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+.emicon-agentjiedianyichang:before {
+  content: "\e611";
+}
+
+.emicon-yunhangyichang:before {
+  content: "\e610";
+}
+
+.emicon-mysqlzhucongtongbu:before {
+  content: "\e60f";
+}
+
+.emicon-zhujidownji:before {
+  content: "\e60e";
+}
+
+.emicon-jiankangjiancha:before {
+  content: "\e60d";
+}
+
+.emicon-jiedianzongshu:before {
+  content: "\e60c";
+}
+
+.emicon-gaojingjiedian:before {
+  content: "\e60b";
+}
+
+.emicon-gaojingfuwushu:before {
+  content: "\e60a";
+}
+
+.emicon-quanjupeizhi:before {
+  content: "\e609";
+}
+
+.emicon-jiqunxunjian:before {
+  content: "\e608";
 }
 
 .emicon-yunweijiaobenpingtaibeifen:before {

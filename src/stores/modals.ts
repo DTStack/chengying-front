@@ -72,6 +72,7 @@ export interface DashBoardStore {
 }
 
 export interface InstallGuideStore {
+  sqlErro: '',
   deployState: 'normal' | 'edit';
   runtimeState: 'normal' | 'edit';
   step: number;
@@ -82,9 +83,10 @@ export interface InstallGuideStore {
   namespaceList: any[];
   productServicesInfo: any;
   hostInstallToList: any[];
+  smoothSelectService: any; // 运行平滑升级的配置项
   selectedService: any; // 选中的配置服务项
   serviceHostList: any[]; // 当前服务的可分配主机
-  resourceState: any; // {selectedKeys: [],tsrgetKeys: []}保存勾选ip状态，
+  resourceState: any; // {selectedKeys: [],targetKeys: []}保存勾选ip状态，
   paramConfigState: any[]; // [{key:field,value: value}]保存param编辑状态做统一保存
   deployUUID: string; // 点击开始部署后保存后端返回的uuid用于查询列表，需要存到localstorage里，用户返回页面后查询一下是否为-1，不是的话跳转到最后一步，只有在部署完成和点击停止部署之后置为-1
   deployList: any[]; // 部署页面的list
@@ -105,6 +107,7 @@ export interface InstallGuideStore {
     dependMessage: string;
   };
   oldHostInfo: any;
+  selectProductLine: any; // 选中产品线
 }
 
 export interface AddHostStore {
@@ -117,6 +120,9 @@ export interface AddHostStore {
 }
 // 部署
 export interface DeployStore {
+  upgradeType: string;
+  isFirstSmooth: boolean;
+  forcedUpgrade: any[];
   versionList: any[];
   product_name: string;
   product_version: string;

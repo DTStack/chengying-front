@@ -1,29 +1,46 @@
 {
-  "name": "dt-em-front",
-  "version": "4.3.2-rel",
-  "description": "Easy Manager",
+  "name": "ChengYing",
+  "version": "4.4.0-beta",
+  "license": "ISC",
+  "author": "dtstack",
   "main": "main.js",
   "scripts": {
-    "start": "cross-env NODE_ENV=development ko dev",
     "build": "rm -rf dist && cross-env NODE_ENV=production ko build --hash",
+    "changeissueurl": "replace 'http://git.dtstack.cn/ziv/data-stack-web/issues/' 'http://redmine.prod.dtstack.cn/issues/' CHANGELOG.md",
+    "changelog": "conventional-changelog -p angular -i CHANGELOG.md -s -r 0 && git add CHANGELOG.md",
+    "check-types": "tsc --skipLibCheck",
+    "deploy-dev": "./scripts/deploy_dev.sh",
+    "dev": "yarn start",
+    "preinstall": "node ./scripts/preinstall.js",
     "lint": "ko eslint './src/**/*.{js,ts,tsx}'",
     "lint-fix": "ko eslint './src/**/*.{js,ts,tsx}' --fix",
     "prettier-fix": "ko prettier './src/**/*.{js,ts,tsx}' -w",
-    "check-types": "tsc --skipLibCheck",
-    "test": "BABEL_ENV=test jest --coverage",
-    "test:watch": "jest --watch",
+    "preview": "http-server dist/ -P http://172.16.82.176",
+    "release": "./scripts/release.sh",
+    "scp": "./scripts/scp.sh",
     "sonar": "node ./sonarcube.scanner.js && ./scripts/ding_talk.sh",
     "sonar-test": "node ./sonarcube.scanner.js",
-    "preinstall": "node ./scripts/preinstall.js",
-    "deploy-dev": "./scripts/deploy_dev.sh",
-    "scp": "./scripts/scp.sh",
-    "release": "./scripts/release.sh",
-    "preview": "http-server dist/ -P http://172.16.82.176",
-    "changelog": "conventional-changelog -p angular -i CHANGELOG.md -s -r 0 && git add CHANGELOG.md",
-    "changeissueurl": "replace 'http://git.dtstack.cn/ziv/data-stack-web/issues/' 'http://redmine.prod.dtstack.cn/issues/' CHANGELOG.md"
+    "start": "cross-env NODE_ENV=development ko dev",
+    "test": "BABEL_ENV=test jest --coverage",
+    "test:watch": "jest --watch"
   },
-  "author": "qiyou",
-  "license": "ISC",
+  "husky": {
+    "hooks": {
+      "pre-commit": "lint-staged",
+      "commit-msg": "commitlint -c ./commitlint.config.js -E HUSKY_GIT_PARAMS"
+    }
+  },
+  "lint-staged": {
+    "src/**/*.{js,ts,tsx}": [
+      "ko eslint --fix",
+      "ko prettier --write"
+    ]
+  },
+  "config": {
+    "commitizen": {
+      "path": "cz-conventional-changelog"
+    }
+  },
   "dependencies": {
     "@testing-library/jest-dom": "^5.11.6",
     "@testing-library/react": "^11.2.0",
@@ -53,10 +70,12 @@
     "es6-promise": "^4.2.5",
     "gm-crypto": "^0.1.8",
     "history": "^4.10.1",
+    "html2canvas": "^1.4.1",
     "husky": "^3.1.0",
     "js-cookie": "^2.2.0",
     "js-yaml": "^3.14.0",
-    "jsencrypt": "http://registry.npm.dtstack.com/jsencrypt/-/jsencrypt-3.1.5.tgz",
+    "jsencrypt": "file:./lib/jsencrypt",
+    "jspdf": "^2.5.1",
     "lodash": "4.17.19",
     "mirror-creator": "^1.1.0",
     "moment": "^2.24.0",
@@ -85,6 +104,7 @@
     "@babel/preset-typescript": "^7.10.1",
     "@commitlint/cli": "^8.3.5",
     "@commitlint/config-angular": "^7.5.0",
+    "@pmmmwh/react-refresh-webpack-plugin": "^0.5.5",
     "@types/http-server": "^0.10.0",
     "@types/jest": "^23.3.10",
     "@types/redux-mock-store": "^1.0.0",
@@ -95,13 +115,15 @@
     "cross-env": "^7.0.3",
     "cz-conventional-changelog": "2.1.0",
     "enzyme-to-json": "^3.3.5",
+    "figlet-console-webpack-plugin": "^1.0.1-alpha",
     "http-server": "^0.12.3",
     "jest": "^24.9.0",
     "jest-sonar-reporter": "^2.0.0",
     "jest-transform-css": "^2.0.0",
-    "ko": "5.2.2",
+    "ko": "5.3.0",
     "lint-staged": "^10.5.3",
     "monaco-editor-webpack-plugin": "^7.0.1",
+    "react-refresh": "^0.12.0",
     "redux-mock-store": "^1.5.3",
     "sonarqube-scanner": "^2.6.0",
     "standard-version": "7.0.1",
@@ -110,35 +132,14 @@
     "webpack": "^5.65.0",
     "worker-loader": "^3.0.8"
   },
-  "husky": {
-    "hooks": {
-      "pre-commit": "lint-staged",
-      "commit-msg": "commitlint -c ./commitlint.config.js -E HUSKY_GIT_PARAMS"
-    }
-  },
-  "lint-staged": {
-    "src/**/*.{js,ts,tsx}": [
-      "ko eslint --fix",
-      "ko prettier --write"
-    ]
+  "jestSonar": {
+    "reportPath": "coverage",
+    "sonar56x": true,
+    "reportFile": "test-reporter.xml"
   },
   "standard-version": {
     "scripts": {
       "postchangelog": ""
     }
-  },
-  "repository": "http://git.dtstack.cn/dtstack/manage.front",
-  "bugs": {
-    "url": "http://redmine.prod.dtstack.cn/projects/em_test/issues"
-  },
-  "config": {
-    "commitizen": {
-      "path": "cz-conventional-changelog"
-    }
-  },
-  "jestSonar": {
-    "reportPath": "coverage",
-    "sonar56x": true,
-    "reportFile": "test-reporter.xml"
   }
 }

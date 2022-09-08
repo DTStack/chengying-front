@@ -1,6 +1,15 @@
 import * as React from 'react';
 import { connect } from 'react-redux';
-import { Table, Select, Modal, message, Icon, Popconfirm, Divider } from 'antd';
+import {
+  Table,
+  Select,
+  Modal,
+  message,
+  Icon,
+  Popconfirm,
+  Divider,
+  Tooltip,
+} from 'antd';
 import { bindActionCreators, Dispatch } from 'redux';
 import { Service, deployService } from '@/services';
 import * as DeployAction from '@/actions/deployAction';
@@ -22,6 +31,7 @@ interface Props extends QueryParams {
   authorityList?: any;
   shouldNameSpaceShow: boolean;
   mode: number;
+  deployProp?: any;
 }
 interface State {
   /** 组件数据 */
@@ -43,6 +53,7 @@ interface State {
   modalType: string;
   versionLists: any[];
   record: any; // 当前产品
+  expandedKeys: any[];
 }
 
 interface VersionType {
@@ -52,6 +63,7 @@ interface VersionType {
 
 const mapStateToProps = (state: AppStoreTypes) => ({
   authorityList: state.UserCenterStore.authorityList,
+  deployProp: state.DeployStore,
 });
 
 const mapDispatchToProps = (dispatch: Dispatch) => ({
@@ -92,6 +104,7 @@ class ProductPackage extends React.Component<Props, State> {
     modalType: '',
     versionLists: [],
     record: null,
+    expandedKeys: [],
   };
 
   static getDerivedStateFromProps(props, state) {
@@ -127,6 +140,7 @@ class ProductPackage extends React.Component<Props, State> {
   };
 
   getDataList = () => {
+    let isSearch: boolean = false;
     const reqParams: any = Object.assign({}, this.state.searchParam);
     if (!reqParams.parentProductName) {
       return;
@@ -134,12 +148,20 @@ class ProductPackage extends React.Component<Props, State> {
 
     reqParams.start = reqParams.start * reqParams.limit;
     if (reqParams.deploy_status) {
+      isSearch = true;
       reqParams.deploy_status = reqParams.deploy_status.join(',');
     }
     if (reqParams.productName) {
+      isSearch = true;
       reqParams.productName = reqParams.productName.join(',');
     }
+    if (reqParams.productVersion) {
+      isSearch = true;
+    }
     reqParams.mode = this.props.mode;
+    if (reqParams.mode) {
+      isSearch = true;
+    }
     this.setState({
       loading: true,
     });
@@ -147,7 +169,39 @@ class ProductPackage extends React.Component<Props, State> {
       res = res.data;
       if (res.code === 0) {
         const data = res.data;
+        let arr = [];
+        res.data.list.map((item, index) => {
+          item.key = `tr_${item.id}${index}`;
+          if (isSearch) {
+            arr.push(item.key);
+          }
+          if (item?.smooth_upgrade_product) {
+            if (
+              !item?.can_rollback &&
+              !item?.can_upgrade &&
+              item?.status !== 'deploying'
+            ) {
+              item.isShowNull = true;
+            }
+            let children = [];
+            children.push(item?.smooth_upgrade_product);
+            item.children = children;
+            if (
+              !(
+                item?.smooth_upgrade_product?.can_rollback ||
+                item?.smooth_upgrade_product?.can_upgrade ||
+                item?.smooth_upgrade_product?.status == 'deploying'
+              )
+            ) {
+              children[0].isShowNull = true;
+            }
+            children[0].isChildren = true;
+            children[0].key = `tr_${children[0].id}`;
+            return item;
+          }
+        });
         this.setState({
+          expandedKeys: arr,
           componentData: data,
         });
       } else {
@@ -190,10 +244,9 @@ class ProductPackage extends React.Component<Props, State> {
         searchParam['sort-by'] = field;
       }
     }
-    this.setState(
-      { searchParam, currentPage: pagination.current },
-      this.getDataList
-    );
+    this.setState({ searchParam, currentPage: pagination.current }, () => {
+      this.getDataList();
+    });
   };
 
   closeUnDeployModal = () => {
@@ -226,7 +279,7 @@ class ProductPackage extends React.Component<Props, State> {
       onOk: async () => {
         const response = await deployService.stopUndeploy({
           clusterId: this.props.clusterId,
-          namespace: record.namespace,
+          namespace: record.namespace ?? '',
           pid: record.id,
         });
         const res = response.data;
@@ -258,29 +311,38 @@ class ProductPackage extends React.Component<Props, State> {
         (item: VersionType) => item.product_version === version
       ) || {};
     const url = this.initUrl(record, versions);
-    utils.setNaviKey('menu_ops_center', 'sub_menu_service_deploy_again');
+    utils.setNaviKey('menu_ops_center', 'sub_menu_cluster_list');
     this.props.history.push(url);
     this.handleUpgradeModalCancel();
   };
 
   handleOk = (param: any) => {
-    const { modalType } = this.state;
+    const { modalType, record } = this.state;
+    const { upgradeType } = this.props.deployProp;
+    // if (upgradeType === 'smooth') {
+    //   Object.assign(params, {upgrade_mode: 'smooth'})
+    // }
     if (modalType === 'upgrade') {
+      if (upgradeType === 'smooth') {
+        this.props.unDeployActions.saveForcedUpgrade(record?.upgrade_service);
+        this.props.unDeployActions.getIsFirstSmooth(
+          record?.can_smooth_upgrade && !record?.smooth_upgrade_product
+            ? true
+            : false
+        );
+      } else {
+        this.props.unDeployActions.saveForcedUpgrade([]);
+        this.props.unDeployActions.getIsFirstSmooth(false);
+      }
       this.jumpToGuide(param);
     } else {
       this.handleRollback(param);
-      this.handleUpgradeModalCancel();
     }
   };
 
   // 回滚
   handleRollback = async (param: any) => {
     const { record } = this.state;
-    this.setState({
-      isShowUnDeploy: true,
-      progressModalType: 'rollback',
-      unDeployRecord: record,
-    });
     const response = await deployService.handleRollBack(
       {
         productName: record?.product_name,
@@ -289,15 +351,32 @@ class ProductPackage extends React.Component<Props, State> {
     );
     const res = response.data;
     if (res.code === 0) {
-      this.props.unDeployActions.getUndeploy({
-        deploy_uuid: res.data.deploy_uuid,
-        autoRefresh: true, // 开启自动刷新
-        complete: 'deploying',
-      });
-      this.getDataList();
+      this.setState(
+        {
+          isShowUnDeploy: true,
+          progressModalType: 'rollback',
+          unDeployRecord: record,
+        },
+        () => {
+          this.props.unDeployActions.getUndeploy({
+            deploy_uuid: res.data.deploy_uuid,
+            autoRefresh: true, // 开启自动刷新
+            complete: 'deploying',
+          });
+          this.getDataList();
+          this.handleUpgradeModalCancel();
+        }
+      );
     } else {
       message.error(res.msg);
     }
+  };
+
+  // 改变升级模式
+  changeUpgradeType = (type: string) => {
+    const { record } = this.state;
+    this.props.unDeployActions.getUpgradeType(type);
+    this.getProductVersionList(record, type);
   };
 
   // 产品升级
@@ -306,6 +385,9 @@ class ProductPackage extends React.Component<Props, State> {
     e: React.MouseEvent<HTMLAnchorElement, MouseEvent>
   ): any => {
     e.preventDefault();
+    this.props.unDeployActions.getUpgradeType(
+      record?.smooth_upgrade_product ? 'smooth' : ''
+    );
     const { authorityList } = this.props;
     if (utils.noAuthorityToDO(authorityList, 'package_upgrade')) {
       return false;
@@ -328,7 +410,6 @@ class ProductPackage extends React.Component<Props, State> {
     if (utils.noAuthorityToDO(authorityList, 'package_upgrade')) {
       return false;
     }
-    this.getProductVersionList(record);
     this.setState({
       upgradeModalVisible: true,
       modalType: 'rollback',
@@ -337,12 +418,16 @@ class ProductPackage extends React.Component<Props, State> {
   };
 
   // 获取产品包版本列表
-  getProductVersionList = async (record: any) => {
+  getProductVersionList = async (record: any, type?: string) => {
+    let params = {
+      product_name: record.product_name,
+      product_version: record.product_version,
+    };
+    if (type === 'smooth' || record?.smooth_upgrade_product) {
+      Object.assign(params, { upgrade_mode: 'smooth' });
+    }
     try {
-      const response = await Service.getProductVersionList({
-        product_name: record.product_name,
-        product_version: record.product_version,
-      });
+      const response = await Service.getProductVersionList(params);
       const { code, data, msg } = response.data;
       if (code === 0) {
         this.setState({ versionLists: data?.list || [] });
@@ -374,6 +459,7 @@ class ProductPackage extends React.Component<Props, State> {
       url += '&namespace=' + record.namespace;
     }
     if (versions?.product_version) {
+      // 新增
       url =
         url +
         '&new_version=' +
@@ -388,12 +474,14 @@ class ProductPackage extends React.Component<Props, State> {
     const { history, authorityList } = this.props;
     const CAN_REDEPLOY = authorityList.menu_deploy_guide;
     const CAN_PROGRESS = authorityList.sub_menu_service_view_progress;
-    if (txt === '重新部署') {
+    if (txt === '重新部署' || txt === '部署') {
+      this.props.unDeployActions.saveForcedUpgrade([]);
+      this.props.unDeployActions.getIsFirstSmooth(false);
+      this.props.unDeployActions.getUpgradeType('');
       if (!CAN_REDEPLOY) {
         this.errorMsg();
         return;
       }
-      utils.setNaviKey('menu_deploy_center', 'sub_menu_product_deploy');
     }
     if (txt === '查看进度') {
       if (!CAN_PROGRESS) {
@@ -418,6 +506,25 @@ class ProductPackage extends React.Component<Props, State> {
       {
         title: '组件名称',
         dataIndex: 'product_name_display',
+        width: '10%',
+        onCell: () => {
+          return {
+            style: {
+              maxWidth: 160,
+              overflow: 'hidden',
+              whiteSpace: 'nowrap',
+              textOverflow: 'ellipsis',
+              cursor: 'pointer',
+            },
+          };
+        },
+        render(product_name_display: string) {
+          return (
+            <Tooltip placement="topLeft" title={product_name_display}>
+              <span>{product_name_display}</span>
+            </Tooltip>
+          );
+        },
       },
       {
         title: '组件版本号',
@@ -425,14 +532,36 @@ class ProductPackage extends React.Component<Props, State> {
         key: 'product_version',
         width: '15%',
         sorter: true,
+        onCell: () => {
+          return {
+            style: {
+              maxWidth: 160,
+              overflow: 'hidden',
+              whiteSpace: 'nowrap',
+              textOverflow: 'ellipsis',
+              cursor: 'pointer',
+            },
+          };
+        },
         render(productVersion: string, record: any) {
           return (
-            <span>
-              {productVersion}
-              {record.is_current_version === 1 && (
-                <Icon style={{ marginLeft: 3 }} type="star" />
-              )}
-            </span>
+            <Tooltip
+              placement="topLeft"
+              title={() => (
+                <span>
+                  {productVersion}
+                  {record.is_current_version === 1 && (
+                    <Icon style={{ marginLeft: 3 }} type="star" />
+                  )}
+                </span>
+              )}>
+              <span>
+                {productVersion}
+                {record.is_current_version === 1 && (
+                  <Icon style={{ marginLeft: 3 }} type="star" />
+                )}
+              </span>
+            </Tooltip>
           );
         },
       },
@@ -461,7 +590,6 @@ class ProductPackage extends React.Component<Props, State> {
         render: (e: string, record: any) => {
           let state: React.ReactNode = '';
           switch (e) {
-            case 'rollbacking':
             case 'deploying':
               state = (
                 <span className="deploy-status-orange">
@@ -474,9 +602,6 @@ class ProductPackage extends React.Component<Props, State> {
                 </span>
               );
               break;
-            case 'dbrollbacking':
-            case 'dbrollbacked':
-            case 'dbrollbackfail':
             case 'deployed':
               state = (
                 <span className="deploy-status-green">
@@ -564,29 +689,32 @@ class ProductPackage extends React.Component<Props, State> {
           const { clusterId } = this.props;
           let isUndeploy = false;
           let txt = '部署';
+          if (record?.smooth_upgrade_product || record?.isChildren) {
+            txt = '';
+          }
           let url = this.initUrl(record);
           switch (record.status) {
-            case 'dbrollbacking':
-            case 'rollbacking':
-              txt = '查看进度';
-              url += `&query_str=${record.deploy_uuid}&cluster_id=${clusterId}&isRollback=1`;
-              break;
             case 'deploying':
+              isUndeploy = false;
               txt = '查看进度';
-              url += `&query_str=${record.deploy_uuid}&cluster_id=${clusterId}`;
+              url +=
+                '&query_str=' + record.deploy_uuid + '&cluster_id=' + clusterId;
               break;
 
             case 'deployed':
             case 'deploy fail':
             case 'undeploy fail':
-            case 'dbrollbacked':
-            case 'dbrollbackfail':
+              if (record?.smooth_upgrade_product || record?.isChildren) {
+                break;
+              }
               txt = '重新部署';
               isUndeploy = true;
               url += `&redeploy=${this.props.clusterId}`;
+              utils.setNaviKey('menu_deploy_center', 'sub_menu_cluster_list');
               break;
             case 'undeploying':
               txt = '查看进度';
+              isUndeploy = false;
               break;
           }
           return (
@@ -598,6 +726,9 @@ class ProductPackage extends React.Component<Props, State> {
                   </a>
                   <Divider type="vertical" />
                 </React.Fragment>
+              )}
+              {record?.isShowNull && (
+                <span style={{ color: '#3F87FF' }}>--</span>
               )}
               {record?.can_rollback && (
                 <>
@@ -645,59 +776,63 @@ class ProductPackage extends React.Component<Props, State> {
                   </a>
                 </React.Fragment>
               )}
-              {isUndeploy && CAN_DELETE && (
-                <Popconfirm
-                  placement="left"
-                  title={
-                    <div style={{ width: 240 }}>
-                      卸载后该安装包下的服务将全部删除，请确认组件及所在集群信息，谨慎操作！
-                      <p>集群：{cur_parent_cluster?.name}</p>
-                      <p>组件：{record?.product_name}</p>
-                    </div>
-                  }
-                  okText="卸载"
-                  cancelText="取消"
-                  onCancel={() => {
-                    this.closeUnDeployModal();
-                  }}
-                  onConfirm={() => {
-                    this.setState(
-                      {
-                        progressModalType: 'unDeploy',
-                        unDeployRecord: record,
-                        isShowUnDeploy: true,
-                      },
-                      () => {
-                        // 开始卸载，在用户未操作情况下轮询list接口
-                        this.props.unDeployActions.startUnDeployService(
-                          {
-                            product_name: record.product_name,
-                            product_version: record.product_version,
-                            clusterId: this.props.clusterId,
-                            namespace: record.product_type
-                              ? record.namespace
-                              : undefined,
-                          },
-                          this.getDataList
-                        );
-                      }
-                    );
-                  }}>
-                  <span>
+              {isUndeploy &&
+                CAN_DELETE &&
+                (!record.smooth_upgrade_product || !record?.isChildren) && (
+                  <Popconfirm
+                    placement="left"
+                    title={
+                      <div style={{ width: 240 }}>
+                        卸载后该安装包下的服务将全部删除，请确认组件及所在集群信息，谨慎操作！
+                        <p>集群：{cur_parent_cluster?.name}</p>
+                        <p>组件：{record?.product_name}</p>
+                      </div>
+                    }
+                    okText="卸载"
+                    cancelText="取消"
+                    onCancel={() => {
+                      this.closeUnDeployModal();
+                    }}
+                    onConfirm={() => {
+                      this.setState(
+                        {
+                          progressModalType: 'unDeploy',
+                          unDeployRecord: record,
+                          isShowUnDeploy: true,
+                        },
+                        () => {
+                          // 开始卸载，在用户未操作情况下轮询list接口
+                          this.props.unDeployActions.startUnDeployService(
+                            {
+                              product_name: record.product_name,
+                              product_version: record.product_version,
+                              clusterId: this.props.clusterId,
+                              namespace: record.product_type
+                                ? record.namespace
+                                : undefined,
+                            },
+                            this.getDataList
+                          );
+                        }
+                      );
+                    }}>
+                    <span>
+                      <Divider type="vertical" />
+                      <a>卸载</a>
+                    </span>
+                  </Popconfirm>
+                )}
+              {isUndeploy &&
+                !CAN_DELETE &&
+                (!record?.smooth_upgrade_product || !record?.isChildren) && (
+                  <span
+                    onClick={() => {
+                      this.errorMsg();
+                    }}>
                     <Divider type="vertical" />
                     <a>卸载</a>
                   </span>
-                </Popconfirm>
-              )}
-              {isUndeploy && !CAN_DELETE && (
-                <span
-                  onClick={() => {
-                    this.errorMsg();
-                  }}>
-                  <Divider type="vertical" />
-                  <a>卸载</a>
-                </span>
-              )}
+                )}
             </span>
           );
         },
@@ -707,6 +842,18 @@ class ProductPackage extends React.Component<Props, State> {
       tableCol.splice(2, 1);
     }
     return tableCol;
+  };
+
+  onExpand = (expanded, record) => {
+    const { expandedKeys } = this.state;
+    if (expanded) {
+      this.setState({ expandedKeys: [...expandedKeys, record.key] });
+    } else {
+      let arr = expandedKeys?.filter((v) => {
+        return v !== record.key;
+      });
+      this.setState({ expandedKeys: arr });
+    }
   };
 
   render = () => {
@@ -723,7 +870,9 @@ class ProductPackage extends React.Component<Props, State> {
       modalType,
       versionLists,
       record,
+      expandedKeys,
     } = this.state;
+    const { deployProp } = this.props;
     const pagination = {
       size: 'small',
       pageSize: searchParam.limit,
@@ -739,7 +888,8 @@ class ProductPackage extends React.Component<Props, State> {
     return (
       <React.Fragment>
         <Table
-          rowKey={(record, index) => 'tr_' + record.id + index}
+          onExpand={this.onExpand}
+          expandedRowKeys={expandedKeys}
           className="dt-table-fixed-base"
           style={{ height: 'calc(100vh - 260px)' }}
           columns={this.getTableColumns()}
@@ -751,7 +901,6 @@ class ProductPackage extends React.Component<Props, State> {
         />
         {isShowUnDeploy && (
           <DeployProgressModal
-            clusterId={this.props.clusterId}
             visible={isShowUnDeploy}
             progressType={progressModalType}
             deployReacord={unDeployRecord}
@@ -766,12 +915,14 @@ class ProductPackage extends React.Component<Props, State> {
         />
         {upgradeModalVisible && (
           <UpgradeModal
+            isFirstSmooth={deployProp.isFirstSmooth}
             visible={upgradeModalVisible}
             type={modalType}
             options={versionLists}
             clusterId={this.props.clusterId}
             record={record}
             onOk={this.handleOk}
+            changeUpgradeType={this.changeUpgradeType}
             onCancel={this.handleUpgradeModalCancel}
           />
         )}
